@@ -1,0 +1,28 @@
+# Python - pliki skompilowane i cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Środowisko wirtualne (VENV)
+# To jest najważniejsze - nie chcemy pchać tysięcy plików bibliotek na GitHuba
+venv/
+.venv/
+env/
+
+# Baza danych (SQLite)
+# Chcemy śledzić KOD, a nie dane w pliku .db, które się ciągle zmieniają
+*.db
+*.sqlite3
+
+# Środowisko i sekrety (na zapas)
+.env
+.python-version
+
+# Ustawienia edytora (opcjonalnie, ale polecam)
+.vscode/
+.idea/
+
+# Systemowe
+.DS_Store
+Thumbs.db
