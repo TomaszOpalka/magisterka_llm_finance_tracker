@@ -1,0 +1,27 @@
+Prompt 3: Warstwa CRUD i Inicjalizacja FastAPI
+Treść do wklejenia modelowi:
+
+„Kontynuujemy budowę systemu 'Finance Track'. Mamy już zdefiniowane modele SQLAlchemy oraz schematy Pydantic. Teraz musimy połączyć te elementy w działającą strukturę API. Komunikuj się wyłącznie w języku polskim.
+
+ZADANIE: Implementacja CRUD i FastAPI
+Przygotuj kod dla dwóch kolejnych plików, dbając o poprawne importy między modułami:
+
+crud.py:
+
+Zaimplementuj asynchroniczną funkcję get_assets, która pobiera wszystkie rekordy z tabeli financial_assets.
+
+Zaimplementuj asynchroniczną funkcję create_asset, która przyjmuje obiekt FinancialAssetCreate i zapisuje go w bazie danych.
+
+UWAGA: Pamiętaj, że klucz główny to asset_id – upewnij się, że operacje CRUD go uwzględniają.
+
+main.py:
+
+Zainicjalizuj aplikację FastAPI.
+
+Stwórz podstawowy endpoint GET /assets, który korzystając z funkcji z crud.py, zwróci listę aktywów.
+
+Stwórz endpoint POST /assets, który pozwoli na dodanie nowego aktywa.
+
+Wykorzystaj asynchroniczny generator sesji (get_db) do wstrzykiwania zależności (Dependency Injection) do endpointów.
+
+Pamiętaj o obsłudze wyjątków oraz zachowaniu czystości kodu zgodnie z PEP 8. Komentarze w kodzie muszą być w języku polskim.”
