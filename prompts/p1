@@ -1,0 +1,30 @@
+„Rozpoczynamy eksperyment badawczy systemu 'Finance Track'. Architektura musi być modularna. Komunikuj się wyłącznie w języku polskim.
+
+ZADANIE: Fundamenty Bazy Danych
+Przygotuj kod dla dwóch plików zgodnie ze standardami PEP 8:
+
+database.py:
+
+Użyj SQLAlchemy 2.0+.
+
+Skonfiguruj asynchroniczny silnik (create_async_engine) dla bazy SQLite (plik: finance.db).
+
+Przygotuj async_sessionmaker.
+
+models.py:
+
+Stwórz klasę bazową Base (używając DeclarativeBase).
+
+Zdefiniuj tabelę financial_assets.
+
+Nazewnictwo pól (STRICT snake_case):
+
+asset_id: String, Primary Key (UWAGA: Nie używaj nazwy 'id', musi to być 'asset_id').
+
+ticker_symbol: String, Unique, Indexed.
+
+last_price: Float.
+
+market_cap: BigInteger.
+
+Wszystkie komentarze w kodzie muszą być po polsku. Nie generuj jeszcze logiki API ani pobierania danych – skup się wyłącznie na tych dwóch plikach.”
