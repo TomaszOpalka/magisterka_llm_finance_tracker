@@ -1,0 +1,24 @@
+„Kontynuujemy budowę systemu 'Finance Track'. Architektura musi pozostać modularna, dlatego teraz przechodzimy do zdefiniowania warstwy walidacji danych. Komunikuj się wyłącznie w języku polskim.
+
+ZADANIE: Implementacja Pydantic v2
+Stwórz plik schemas.py, w którym zdefiniujesz modele danych przy użyciu biblioteki Pydantic v2.
+
+Wymagania techniczne:
+
+Stwórz bazowy schemat FinancialAssetBase, który zawiera pola zgodne z naszą strukturą bazy danych (wszystkie w snake_case):
+
+ticker_symbol (str)
+
+last_price (float)
+
+market_cap (int)
+
+Stwórz schemat FinancialAssetCreate (dziedziczący po bazie).
+
+Stwórz schemat FinancialAsset (do odczytu), który dodatkowo zawiera pole:
+
+asset_id (str) – pamiętaj, aby nie używać nazwy 'id'.
+
+W schemacie FinancialAsset włącz tryb wsparcia dla ORM (from_attributes=True), aby umożliwić współpracę z modelami SQLAlchemy.
+
+Pamiętaj o dodaniu odpowiednich typów (Type Hints) oraz komentarzy w języku polskim wyjaśniających przeznaczenie każdego schematu.”
