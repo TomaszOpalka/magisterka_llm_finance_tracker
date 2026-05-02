@@ -1,0 +1,17 @@
+Prompt 4: Automatyzacja schematu i Lifecycle Management
+Treść do wklejenia modelowi:
+
+„Kontynuujemy projekt 'Finance Track'. Mamy już warstwę bazodanową, modele i endpointy. Teraz musimy zapewnić, aby system był gotowy do uruchomienia bez ręcznego tworzenia tabel w bazie danych. Rozmawiaj ze mną wyłącznie po polsku.
+
+ZADANIE: Inicjalizacja bazy i Lifespan aplikacji
+Zmodyfikuj plik main.py oraz database.py (jeśli to konieczne), aby uwzględnić następujące wymagania:
+
+Automatyczne tworzenie tabel: Przy starcie aplikacji system powinien sprawdzić, czy tabela financial_assets istnieje w pliku finance.db, a jeśli nie – stworzyć ją asynchronicznie, korzystając z Base.metadata.create_all.
+
+FastAPI Lifespan: Użyj dekoratora @asynccontextmanager (lub nowoczesnego podejścia lifespan w FastAPI), aby zarządzać procesem uruchamiania (startup) bazy danych.
+
+Endpoint testowy (Healthcheck): Dodaj prosty endpoint GET /status, który zwróci informację: {"status": "ok", "database": "connected"}.
+
+Weryfikacja Nomenklatury: Upewnij się, że w logach startowych lub komentarzach używasz nazwy klucza głównego asset_id zgodnie z naszym kontraktem.
+
+Pamiętaj, aby kod był asynchroniczny i zgodny z dokumentacją SQLAlchemy 2.0. Wszystkie komentarze i komunikaty muszą być w języku polskim.”

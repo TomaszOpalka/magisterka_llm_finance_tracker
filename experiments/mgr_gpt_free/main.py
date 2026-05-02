@@ -1,19 +1,49 @@
 """
 Główny plik aplikacji FastAPI dla systemu Finance Track.
+Zawiera konfigurację lifespan oraz inicjalizację bazy danych.
 """
 
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator, List
 
 from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import async_session, engine
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
 from crud import get_assets, create_asset
 
-app = FastAPI(title="Finance Track API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Zarządzanie cyklem życia aplikacji (startup/shutdown).
+
+    Przy starcie:
+    - Tworzy tabele w bazie danych, jeśli nie istnieją.
+    - Zapewnia zgodność struktury z modelem (w tym klucz główny asset_id).
+    """
+    try:
+        async with engine.begin() as conn:
+            # Tworzenie tabel na podstawie modeli ORM
+            await conn.run_sync(Base.metadata.create_all)
+
+        print("Baza danych gotowa (tabela financial_assets, PK: asset_id).")
+
+        yield
+
+    finally:
+        # Możliwe miejsce na cleanup w przyszłości
+        print("Zamykanie aplikacji Finance Track.")
+
+
+# Inicjalizacja aplikacji z użyciem lifespan
+app = FastAPI(
+    title="Finance Track API",
+    lifespan=lifespan,
+)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -27,14 +57,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
+@app.get("/status")
+async def healthcheck() -> dict:
     """
-    Inicjalizacja bazy danych przy starcie aplikacji.
-    Tworzy tabele, jeśli nie istnieją.
+    Endpoint testowy sprawdzający status aplikacji i bazy danych.
     """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    return {
+        "status": "ok",
+        "database": "connected",
+    }
 
 
 @app.get("/assets", response_model=List[FinancialAsset])
