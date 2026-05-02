@@ -1,103 +1,104 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from typing import List
 
-# Importujemy engine z database.py do obsługi procesu tworzenia tabel
 from database import AsyncSessionLocal, engine
 import models
 import crud
 import schemas
-
+from utils import logger, format_market_cap
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Zarządza cyklem życia aplikacji FastAPI (startup i shutdown).
-    Gwarantuje, że niezbędne tabele zostaną utworzone przed przyjęciem żądań.
+    Teraz wyposażony w logowanie postępów.
     """
-    # Akcje wykonywane podczas startu (startup)
-    print("Uruchamianie aplikacji... Weryfikacja struktury bazy danych.")
-    print("Sprawdzanie tabeli 'financial_assets' (oczekiwany klucz główny: 'asset_id').")
+    logger.info("Uruchomienie systemu 'Finance Track'.")
+    logger.info("Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.")
     
-    # Wykorzystujemy engine.begin() do utworzenia asynchronicznej transakcji
     async with engine.begin() as conn:
-        # Metoda run_sync wykonuje synchroniczną operację create_all bez blokowania pętli zdarzeń
         await conn.run_sync(models.Base.metadata.create_all)
         
-    print("Inicjalizacja zakończona. Baza danych gotowa do pracy.")
+    logger.info("Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.")
     
-    # Przekazanie kontroli do właściwej aplikacji
     yield
     
-    # Akcje wykonywane podczas wyłączania aplikacji (shutdown)
-    print("Zamykanie aplikacji... Czyszczenie zasobów silnika bazy danych.")
+    logger.info("Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.")
     await engine.dispose()
 
-
-# Inicjalizacja instancji aplikacji FastAPI z wbudowanym lifespan
+# Inicjalizacja instancji aplikacji FastAPI
 app = FastAPI(title="Finance Track API", lifespan=lifespan)
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Globalny handler przechwytujący wyjątki HTTPException.
+    Rejestruje błąd w systemie logów przed wysłaniem odpowiedzi do klienta.
+    """
+    logger.error(f"Zgłoszono wyjątek HTTP {exc.status_code} na ścieżce {request.url.path}: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 async def get_db():
-    """
-    Tworzy i zarządza cyklem życia sesji bazy danych dla każdego żądania (Dependency Injection).
-    """
+    """Wstrzykiwanie zależności: generator sesji bazy danych."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
 
-
 @app.get("/status")
 async def healthcheck():
-    """
-    Prosty endpoint diagnostyczny (Healthcheck).
-    Potwierdza, że aplikacja jest uruchomiona, a baza danych gotowa.
-    """
+    """Weryfikacja dostępności serwera."""
     return {"status": "ok", "database": "connected"}
-
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
 async def read_assets(db: AsyncSession = Depends(get_db)):
-    """
-    Endpoint obsługujący metodę GET.
-    Zwraca listę wszystkich aktywów w systemie.
-    """
+    """Pobiera i zwraca listę wszystkich aktywów."""
     try:
         assets = await crud.get_assets(db)
+        # Przykład opcjonalnego wykorzystania formatera z utils.py podczas logowania (nie modyfikuje schematu)
+        logger.info(f"Pobrano listę aktywów. Zwracam {len(assets)} rekordów.")
         return assets
     except Exception as e:
+        # Błąd nie-HTTP zostanie obsłużony klasycznie i zamieniony na HTTPException
         raise HTTPException(
             status_code=500, 
-            detail="Wystąpił błąd podczas pobierania aktywów."
+            detail="Wystąpił błąd wewnętrzny podczas pobierania aktywów."
         )
-
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
 async def add_asset(
     asset: schemas.FinancialAssetCreate, 
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Endpoint obsługujący metodę POST.
-    Przyjmuje dane zdefiniowane w FinancialAssetCreate i tworzy nowe aktywo.
-    Zwraca kod 201 (Created) po pomyślnym wykonaniu.
-    """
+    """Dodaje nowe aktywo do bazy danych."""
     try:
         created_asset = await crud.create_asset(db, asset)
+        
+        # Weryfikacja Nomenklatury: Odwołanie do 'asset_id' w logach
+        logger.info(
+            f"Dodano nowe aktywo ({created_asset.ticker_symbol}). "
+            f"Zarejestrowany klucz główny (asset_id): {created_asset.asset_id} | "
+            f"Sformatowana kapitalizacja: {format_market_cap(created_asset.market_cap)}"
+        )
         return created_asset
+        
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
             status_code=400, 
-            detail="Instrument o podanym symbolu (ticker_symbol) już istnieje."
+            detail="Instrument o podanym symbolu (ticker_symbol) już istnieje w systemie."
         )
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=500, 
-            detail="Wystąpił błąd wewnętrzny podczas zapisu aktywa."
+            detail="Wystąpił nieoczekiwany błąd podczas zapisu aktywa do bazy danych."
         )

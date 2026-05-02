@@ -1,0 +1,4 @@
+2026-05-02 20:01:35 | INFO | Uruchomienie systemu 'Finance Track'.
+2026-05-02 20:01:35 | INFO | Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.
+2026-05-02 20:01:35 | INFO | Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.
+2026-05-02 20:02:01 | INFO | Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.
