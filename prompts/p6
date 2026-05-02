@@ -1,0 +1,15 @@
+Prompt 6: Implementacja niestandardowych wyjątków i walidacji biznesowej
+
+„Kontynuujemy projekt 'Finance Track'. Nasza architektura modularna wymaga teraz ujednoliconego sposobu obsługi błędów biznesowych, aby zapewnić spójność odpowiedzi API.
+
+ZADANIE: Niestandardowe wyjątki i Middleware
+
+Stwórz plik exceptions.py, w którym zdefiniujesz klasę bazową FinanceException(Exception) oraz klasy pochodne, takie jak AssetNotFoundException czy DatabaseConnectionException.
+
+Każdy wyjątek powinien przechowywać kod błędu (status_code) oraz szczegółowy komunikat.
+
+Zaktualizuj plik main.py, dodając handlery dla tych wyjątków (@app.exception_handler), które będą automatycznie zwracać odpowiedź JSON do klienta oraz logować błąd przy użyciu loggera z utils.py.
+
+W komunikatach błędów logowania upewnij się, że odwołujesz się do identyfikatora zasobu jako asset_id.
+
+Zmodyfikuj endpoint GET /assets w main.py tak, aby w przypadku braku danych w bazie rzucał wyjątek AssetNotFoundException.”

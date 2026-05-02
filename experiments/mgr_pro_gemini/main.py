@@ -9,14 +9,13 @@ from database import AsyncSessionLocal, engine
 import models
 import crud
 import schemas
+import exceptions
 from utils import logger, format_market_cap
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Zarządza cyklem życia aplikacji FastAPI (startup i shutdown).
-    Teraz wyposażony w logowanie postępów.
-    """
+    """Zarządza cyklem życia aplikacji FastAPI (startup i shutdown)."""
     logger.info("Uruchomienie systemu 'Finance Track'.")
     logger.info("Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.")
     
@@ -24,26 +23,41 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(models.Base.metadata.create_all)
         
     logger.info("Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.")
-    
     yield
-    
     logger.info("Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.")
     await engine.dispose()
+
 
 # Inicjalizacja instancji aplikacji FastAPI
 app = FastAPI(title="Finance Track API", lifespan=lifespan)
 
+
+@app.exception_handler(exceptions.FinanceException)
+async def finance_exception_handler(request: Request, exc: exceptions.FinanceException):
+    """
+    Globalny handler dla autorskich wyjątków biznesowych (FinanceException).
+    Zwraca ujednoliconą odpowiedź JSON do klienta i loguje zdarzenie.
+    """
+    # Logowanie błędu biznesowego z zachowaniem wymaganej nomenklatury (asset_id)
+    logger.warning(
+        f"Błąd biznesowy [{exc.status_code}] na ścieżce {request.url.path}: {exc.detail} "
+        f"| Przypominacz systemowy: operacje bazują na identyfikatorze 'asset_id'."
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """
-    Globalny handler przechwytujący wyjątki HTTPException.
-    Rejestruje błąd w systemie logów przed wysłaniem odpowiedzi do klienta.
-    """
+    """Globalny handler przechwytujący standardowe wyjątki HTTPException."""
     logger.error(f"Zgłoszono wyjątek HTTP {exc.status_code} na ścieżce {request.url.path}: {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
     )
+
 
 async def get_db():
     """Wstrzykiwanie zależności: generator sesji bazy danych."""
@@ -53,25 +67,34 @@ async def get_db():
         finally:
             await session.close()
 
+
 @app.get("/status")
 async def healthcheck():
     """Weryfikacja dostępności serwera."""
     return {"status": "ok", "database": "connected"}
 
+
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
 async def read_assets(db: AsyncSession = Depends(get_db)):
-    """Pobiera i zwraca listę wszystkich aktywów."""
+    """
+    Pobiera i zwraca listę wszystkich aktywów.
+    Zgłasza błąd AssetNotFoundException, jeśli baza jest pusta.
+    """
     try:
         assets = await crud.get_assets(db)
-        # Przykład opcjonalnego wykorzystania formatera z utils.py podczas logowania (nie modyfikuje schematu)
-        logger.info(f"Pobrano listę aktywów. Zwracam {len(assets)} rekordów.")
-        return assets
     except Exception as e:
-        # Błąd nie-HTTP zostanie obsłużony klasycznie i zamieniony na HTTPException
-        raise HTTPException(
-            status_code=500, 
-            detail="Wystąpił błąd wewnętrzny podczas pobierania aktywów."
+        # W przypadku problemu z samym zapytaniem do bazy rzucamy nowy błąd
+        raise exceptions.DatabaseConnectionException()
+        
+    # Weryfikacja czy lista nie jest pusta
+    if not assets:
+        raise exceptions.AssetNotFoundException(
+            detail="Brak danych. Nie odnaleziono żadnego instrumentu (żaden 'asset_id' nie figuruje w bazie)."
         )
+
+    logger.info(f"Pobrano listę aktywów. Zwracam {len(assets)} rekordów.")
+    return assets
+
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
 async def add_asset(
@@ -82,7 +105,6 @@ async def add_asset(
     try:
         created_asset = await crud.create_asset(db, asset)
         
-        # Weryfikacja Nomenklatury: Odwołanie do 'asset_id' w logach
         logger.info(
             f"Dodano nowe aktywo ({created_asset.ticker_symbol}). "
             f"Zarejestrowany klucz główny (asset_id): {created_asset.asset_id} | "
@@ -98,7 +120,6 @@ async def add_asset(
         )
     except Exception as e:
         await db.rollback()
-        raise HTTPException(
-            status_code=500, 
+        raise exceptions.DatabaseConnectionException(
             detail="Wystąpił nieoczekiwany błąd podczas zapisu aktywa do bazy danych."
         )
