@@ -1,26 +1,52 @@
 """
 Główna aplikacja FastAPI systemu Finance Track.
 Udostępnia endpointy REST do zarządzania aktywami finansowymi.
+Podczas startu automatycznie tworzy wymagane tabele w bazie danych.
 """
 
-from typing import List
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, List
 
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Importy modułów aplikacji (przy założeniu, że wszystkie są w jednym katalogu)
-from database import async_session
+# Importy modułów aplikacji (wszystkie pliki w jednym katalogu)
+from database import engine, async_session
+from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
 from crud import get_assets, create_asset
 
-# Inicjalizacja aplikacji FastAPI
-app = FastAPI(title="Finance Track", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Kontekst życia aplikacji: przy starcie tworzy tabele w bazie danych,
+    przy zamykaniu zwalnia zasoby (silnik zostanie zamknięty przez async_session).
+    """
+    # Tworzymy tabele (jeśli nie istnieją) przed pierwszym żądaniem.
+    # Używamy run_sync, ponieważ SQLAlchemy 2.0 nie udostępnia jeszcze
+    # w pełni asynchronicznej wersji create_all.
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield  # Aplikacja działa
+
+    # Opcjonalne porządki po zamknięciu – można np. pozbyć się puli połączeń.
+    await engine.dispose()
 
 
-async def get_db() -> AsyncSession:
+# Inicjalizacja aplikacji FastAPI z podpiętym lifespanem
+app = FastAPI(
+    title="Finance Track",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Generator zależności dostarczający asynchroniczną sesję bazodanową.
-    Sesja jest automatycznie zamykana po obsłużeniu żądania.
+    Typ zwracany to asynchroniczny generator, dlatego używamy AsyncGenerator.
     """
     async with async_session() as session:
         yield session
@@ -38,7 +64,6 @@ async def read_assets(db: AsyncSession = Depends(get_db)):
     try:
         assets = await get_assets()
     except Exception as e:
-        # W przypadku nieoczekiwanego błędu bazy danych zwracamy 500
         raise HTTPException(
             status_code=500, detail=f"Błąd podczas pobierania aktywów: {str(e)}"
         )
@@ -57,15 +82,13 @@ async def create_new_asset(
 ):
     """
     Endpoint tworzący nowy aktyw na podstawie dostarczonych danych.
-    Klucz główny (asset_id) jest generowany automatycznie.
+    asset_id jest generowany automatycznie (UUID).
     """
     try:
         new_asset = await create_asset(asset_data)
     except ValueError as e:
-        # Błędy walidacji biznesowej (np. duplikat tickera) zwracamy jako 409 Conflict
         raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
-        # Ogólna obsługa nieoczekiwanych błędów
         raise HTTPException(
             status_code=500, detail=f"Nieoczekiwany błąd serwera: {str(e)}"
         )
