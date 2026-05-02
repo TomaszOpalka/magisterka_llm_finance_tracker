@@ -1,0 +1,21 @@
+Prompt 5: Narzędzia pomocnicze i Logger
+Treść do wklejenia modelowi:
+
+„Kończymy pierwszy etap budowy systemu 'Finance Track'. Wszystkie dotychczasowe pliki (models.py, schemas.py, crud.py, main.py) muszą ze sobą współpracować w sposób asynchroniczny. Rozmawiaj ze mną wyłącznie po polsku.
+
+ZADANIE: Implementacja warstwy pomocniczej i logowania
+Przygotuj plik utils.py, który będzie zawierał:
+
+Konfigurację Loggera: Skonfiguruj standardową bibliotekę logging tak, aby zapisywała zdarzenia do pliku finance.log oraz wyświetlała je w konsoli. Komunikaty logów powinny być w języku polskim (np. 'Uruchomienie systemu', 'Dodano nowe aktywo').
+
+Funkcję formatującą: Prostą funkcję, która przyjmuje wartość liczbową market_cap i zwraca ją w czytelnym formacie tekstowym (np. skróty 'mld' dla miliardów).
+
+Weryfikacja Nomenklatury: Upewnij się, że Logger odwołuje się do klucza głównego jako asset_id w komunikatach dotyczących bazy danych.
+
+Zaktualizuj plik main.py:
+
+Zaimportuj loggera i dodaj logowanie informacji o pomyślnym starcie aplikacji wewnątrz funkcji lifespan.
+
+Dodaj obsługę błędu HTTPException, która również będzie logowana przed wysłaniem odpowiedzi do klienta.
+
+Pamiętaj, aby kod był asynchroniczny tam, gdzie to konieczne, zgodny z SQLAlchemy 2.0+ i zawierał komentarze wyłącznie w języku polskim.”
