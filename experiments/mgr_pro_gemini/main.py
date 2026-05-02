@@ -1,26 +1,63 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from typing import List
 
-from database import AsyncSessionLocal
+# Importujemy engine z database.py do obsługi procesu tworzenia tabel
+from database import AsyncSessionLocal, engine
+import models
 import crud
 import schemas
 
-# Inicjalizacja instancji aplikacji FastAPI
-app = FastAPI(title="Finance Track API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Zarządza cyklem życia aplikacji FastAPI (startup i shutdown).
+    Gwarantuje, że niezbędne tabele zostaną utworzone przed przyjęciem żądań.
+    """
+    # Akcje wykonywane podczas startu (startup)
+    print("Uruchamianie aplikacji... Weryfikacja struktury bazy danych.")
+    print("Sprawdzanie tabeli 'financial_assets' (oczekiwany klucz główny: 'asset_id').")
+    
+    # Wykorzystujemy engine.begin() do utworzenia asynchronicznej transakcji
+    async with engine.begin() as conn:
+        # Metoda run_sync wykonuje synchroniczną operację create_all bez blokowania pętli zdarzeń
+        await conn.run_sync(models.Base.metadata.create_all)
+        
+    print("Inicjalizacja zakończona. Baza danych gotowa do pracy.")
+    
+    # Przekazanie kontroli do właściwej aplikacji
+    yield
+    
+    # Akcje wykonywane podczas wyłączania aplikacji (shutdown)
+    print("Zamykanie aplikacji... Czyszczenie zasobów silnika bazy danych.")
+    await engine.dispose()
 
 
-# Generator sesji bazodanowej - Wstrzykiwanie Zależności (Dependency Injection)
+# Inicjalizacja instancji aplikacji FastAPI z wbudowanym lifespan
+app = FastAPI(title="Finance Track API", lifespan=lifespan)
+
+
 async def get_db():
     """
-    Tworzy i zarządza cyklem życia sesji bazy danych dla każdego żądania.
+    Tworzy i zarządza cyklem życia sesji bazy danych dla każdego żądania (Dependency Injection).
     """
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
+
+
+@app.get("/status")
+async def healthcheck():
+    """
+    Prosty endpoint diagnostyczny (Healthcheck).
+    Potwierdza, że aplikacja jest uruchomiona, a baza danych gotowa.
+    """
+    return {"status": "ok", "database": "connected"}
 
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
@@ -33,7 +70,6 @@ async def read_assets(db: AsyncSession = Depends(get_db)):
         assets = await crud.get_assets(db)
         return assets
     except Exception as e:
-        # Ogólna obsługa nieoczekiwanych błędów
         raise HTTPException(
             status_code=500, 
             detail="Wystąpił błąd podczas pobierania aktywów."
@@ -54,14 +90,12 @@ async def add_asset(
         created_asset = await crud.create_asset(db, asset)
         return created_asset
     except IntegrityError:
-        # Obsługa naruszenia unikalności (np. ticker_symbol, który już istnieje w bazie)
         await db.rollback()
         raise HTTPException(
             status_code=400, 
             detail="Instrument o podanym symbolu (ticker_symbol) już istnieje."
         )
     except Exception as e:
-        # Wycofanie transakcji w razie innego krytycznego błędu zapisu
         await db.rollback()
         raise HTTPException(
             status_code=500, 
