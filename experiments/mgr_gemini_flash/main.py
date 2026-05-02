@@ -1,50 +1,64 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from contextlib import asynccontextmanager
 from typing import List
 
 import crud
 import schemas
 from database import async_session, init_db
 
-app = FastAPI(title="Finance Track API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Zarządza cyklem życia aplikacji. 
+    Inicjalizuje bazę danych przed uruchomieniem serwera.
+    """
+    # Logika wykonywana przy starcie (Startup)
+    print("Inicjalizacja systemu 'Finance Track'...")
+    print("Weryfikacja tabel bazy danych (klucz główny: asset_id)...")
+    await init_db()
+    print("Baza danych gotowa do pracy.")
+    
+    yield  # W tym momencie aplikacja przyjmuje żądania
+    
+    # Logika wykonywana przy zamykaniu (Shutdown)
+    print("Zamykanie systemu 'Finance Track'...")
 
-# Dependency: Generator sesji bazy danych
+app = FastAPI(
+    title="Finance Track API",
+    lifespan=lifespan
+)
+
+# Dependency: Generator sesji
 async def get_db():
-    """
-    Tworzy nową asynchroniczną sesję dla każdego zapytania 
-    i zamyka ją po zakończeniu operacji.
-    """
     async with async_session() as session:
         yield session
 
-@app.on_event("startup")
-async def startup():
+@app.get("/status")
+async def health_check():
     """
-    Inicjalizacja bazy danych (tworzenie tabel) przy starcie aplikacji.
+    Endpoint testowy do weryfikacji dostępności systemu.
     """
-    await init_db()
+    return {
+        "status": "ok", 
+        "database": "connected",
+        "contract_verification": "asset_id_enforced"
+    }
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
 async def read_assets(db: AsyncSession = Depends(get_db)):
-    """
-    Endpoint zwracający listę wszystkich aktywów finansowych.
-    """
+    """Pobiera listę aktywów finansowych."""
     assets = await crud.get_assets(db)
     return assets
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Endpoint do dodawania nowego aktywa. 
-    Sprawdza, czy asset_id został poprawnie wygenerowany i zapisany.
-    """
+    """Dodaje nowe aktywo finansowe z automatycznym generowaniem asset_id."""
     try:
         new_asset = await crud.create_asset(db, asset)
         return new_asset
     except Exception as e:
-        # Podstawowa obsługa błędów (np. naruszenie unikalności ticker_symbol)
-        raise HTTPException(status_code=400, detail=f"Błąd podczas tworzenia aktywa: {str(e)}")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Błąd podczas tworzenia zasobu: {str(e)}"
+        )

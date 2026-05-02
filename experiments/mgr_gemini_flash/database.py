@@ -1,17 +1,10 @@
-import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from models import Base
 
-# Konfiguracja adresu bazy danych (SQLite asynchronicznie)
 DATABASE_URL = "sqlite+aiosqlite:///./finance.db"
 
-# Tworzenie asynchronicznego silnika
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=True,  # Ustawienie True pozwala na podgląd zapytań SQL w konsoli
-)
+engine = create_async_engine(DATABASE_URL, echo=False)
 
-# Fabryka asynchronicznych sesji
 async_session = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -19,7 +12,10 @@ async_session = async_sessionmaker(
 )
 
 async def init_db():
-    """Inicjalizacja struktur bazy danych."""
+    """
+    Tworzy wszystkie tabele zdefiniowane w modelach (w tym financial_assets).
+    Wykorzystuje klucz główny 'asset_id' zgodnie ze schematem.
+    """
     async with engine.begin() as conn:
-        # Tworzenie tabel na podstawie zdefiniowanych modeli
+        # run_sync jest wymagane do operacji na metadanych w silniku asynchronicznym
         await conn.run_sync(Base.metadata.create_all)
