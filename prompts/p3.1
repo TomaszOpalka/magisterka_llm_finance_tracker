@@ -1,0 +1,6 @@
+dla modelu deepseek koniecność wprowadzenia korekty 
+
+Return type of async generator function must be compatible with "AsyncGenerator[Any, Any]"
+  "AsyncGenerator[Any, Any, Any]" is not assignable to "AsyncSession"
+Aplikacja wyrzuca błąd sqlite3.OperationalError: no such table: financial_assets, ponieważ tabele nie zostały zainicjalizowane w bazie. Popraw plik main.py, tak aby przy starcie aplikacji
+(używając dekoratora @app.on_event("startup") lub nowszego mechanizmu lifespan) system automatycznie tworzył tabele w bazie danych przy użyciu Base.metadata.create_all (pamiętaj o asynchroniczności!)
