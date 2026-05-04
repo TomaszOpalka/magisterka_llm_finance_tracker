@@ -5,3 +5,6 @@
 2026-05-02 21:10:45,199 - INFO - Uruchomienie systemu Finance Track - baza gotowa (tabela financial_assets, PK: asset_id)
 2026-05-02 21:10:50,648 - INFO - Zamykanie aplikacji Finance Track
 2026-05-02 21:10:52,610 - INFO - Uruchomienie systemu Finance Track - baza gotowa (tabela financial_assets, PK: asset_id)
+2026-05-04 20:41:22,184 - INFO - Zamykanie aplikacji Finance Track
+2026-05-04 20:41:29,679 - INFO - Uruchomienie systemu Finance Track - baza gotowa (tabela financial_assets, PK: asset_id)
+2026-05-04 20:41:39,799 - INFO - Zamykanie aplikacji Finance Track

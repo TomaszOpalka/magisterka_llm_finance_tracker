@@ -1,15 +1,15 @@
 """
 Moduł konfiguracji asynchronicznego połączenia z bazą danych SQLite.
-Używa SQLAlchemy 2.0+ z silnikiem asynchronicznym (aiosqlite).
+Korzysta z centralnych ustawień aplikacji (config.py).
 """
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from config import settings  # Import konfiguracji
 
-# Ścieżka do pliku bazy danych (względna – plik powstanie w katalogu aplikacji)
-# Sterownik: aiosqlite (pip install aiosqlite)
-DATABASE_URL = "sqlite+aiosqlite:///./finance.db"
+# Pobieramy URL bazy danych z ustawień (może nadpisany w .env)
+DATABASE_URL = settings.DATABASE_URL
 
-# Asynchroniczny silnik SQLAlchemy – echo=True włącza logowanie SQL (przydatne przy rozwoju)
+# Asynchroniczny silnik SQLAlchemy – logowanie SQL wyłączone (zmień echo=True dla debugowania)
 engine = create_async_engine(DATABASE_URL, echo=False)
 
 # Fabryka sesji asynchronicznych – nie wygaszamy atrybutów po commit()
