@@ -30,3 +30,10 @@
 2026-05-04 22:27:18 | INFO | Uruchomienie systemu Finance Track
 2026-05-04 22:27:18 | INFO | System Finance Track został pomyślnie uruchomiony
 2026-05-04 22:27:49 | INFO | Zamykanie systemu Finance Track
+2026-05-04 22:27:51 | INFO | Uruchomienie systemu Finance Track
+2026-05-04 22:27:51 | INFO | System Finance Track został pomyślnie uruchomiony
+2026-05-04 22:36:57 | ERROR | Błąd podczas pobierania aktywów: (sqlite3.OperationalError) no such column: financial_assets.last_updated
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.last_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-04 22:36:57 | ERROR | Błąd biznesowy [500]: Nie udało się pobrać listy aktywów | Ścieżka: /assets
