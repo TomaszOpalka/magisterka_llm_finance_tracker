@@ -1,3 +1,15 @@
 [2026-05-02 19:53:26] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
 [2026-05-02 19:53:26] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
 [2026-05-02 19:53:26] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-02 21:07:22] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-02 21:07:26] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-02 21:07:26] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-02 21:07:26] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-02 21:07:30] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-02 21:07:31] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-02 21:07:31] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-02 21:07:31] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-02 21:07:36] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-02 21:07:37] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-02 21:07:38] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-02 21:07:38] INFO - finance_track - System Finance Track wystartował pomyślnie.

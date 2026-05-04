@@ -1,12 +1,12 @@
 """
 Główny plik aplikacji FastAPI dla systemu Finance Track.
-Zawiera konfigurację lifespan, inicjalizację bazy danych oraz logowanie.
+Zawiera obsługę wyjątków biznesowych oraz logowanie.
 """
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, List
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,12 +16,17 @@ from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
 from crud import get_assets, create_asset
 from utils import logger
+from exceptions import (
+    FinanceException,
+    AssetNotFoundException,
+    DatabaseConnectionException,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Zarządzanie cyklem życia aplikacji (startup/shutdown).
+    Zarządzanie cyklem życia aplikacji.
     """
     try:
         async with engine.begin() as conn:
@@ -46,7 +51,7 @@ app = FastAPI(
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Generator dostarczający sesję bazy danych.
+    Generator sesji bazy danych.
     """
     async with async_session() as session:
         try:
@@ -55,16 +60,16 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(
+@app.exception_handler(FinanceException)
+async def finance_exception_handler(
     request: Request,
-    exc: HTTPException,
+    exc: FinanceException,
 ) -> JSONResponse:
     """
-    Globalna obsługa wyjątków HTTP z logowaniem.
+    Globalny handler dla wyjątków biznesowych.
     """
     logger.error(
-        f"Błąd HTTP {exc.status_code} przy żądaniu {request.url}: {exc.detail}"
+        f"Błąd aplikacji (asset_id): {exc.detail} | URL: {request.url}"
     )
 
     return JSONResponse(
@@ -73,10 +78,30 @@ async def http_exception_handler(
     )
 
 
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(
+    request: Request,
+    exc: SQLAlchemyError,
+) -> JSONResponse:
+    """
+    Obsługa błędów bazy danych.
+    """
+    logger.error(
+        f"Błąd bazy danych (asset_id): {str(exc)} | URL: {request.url}"
+    )
+
+    db_exc = DatabaseConnectionException()
+
+    return JSONResponse(
+        status_code=db_exc.status_code,
+        content={"detail": db_exc.detail},
+    )
+
+
 @app.get("/status")
 async def healthcheck() -> dict:
     """
-    Endpoint testowy sprawdzający status aplikacji.
+    Endpoint testowy.
     """
     return {
         "status": "ok",
@@ -91,17 +116,15 @@ async def read_assets(
     """
     Pobiera wszystkie aktywa finansowe.
     """
-    try:
-        assets = await get_assets(db)
-        logger.info("Pobrano listę aktywów z bazy danych")
-        return assets
+    assets = await get_assets(db)
 
-    except SQLAlchemyError as exc:
-        logger.error(f"Błąd bazy danych podczas pobierania aktywów: {exc}")
-        raise HTTPException(
-            status_code=500,
-            detail="Błąd podczas pobierania danych",
-        )
+    # Jeśli brak danych → wyjątek biznesowy
+    if not assets:
+        raise AssetNotFoundException()
+
+    logger.info("Pobrano listę aktywów z bazy danych")
+
+    return assets
 
 
 @app.post("/assets", response_model=FinancialAsset, status_code=201)
@@ -112,19 +135,11 @@ async def add_asset(
     """
     Dodaje nowe aktywo finansowe.
     """
-    try:
-        asset = await create_asset(db, asset_in)
+    asset = await create_asset(db, asset_in)
 
-        logger.info(
-            f"Dodano nowe aktywo (asset_id={asset.asset_id}, "
-            f"ticker={asset.ticker_symbol})"
-        )
+    logger.info(
+        f"Dodano nowe aktywo (asset_id={asset.asset_id}, "
+        f"ticker={asset.ticker_symbol})"
+    )
 
-        return asset
-
-    except SQLAlchemyError as exc:
-        logger.error(f"Błąd bazy danych podczas zapisu aktywa: {exc}")
-        raise HTTPException(
-            status_code=500,
-            detail="Błąd podczas zapisu danych",
-        )
+    return asset

@@ -1,12 +1,13 @@
 """
 Główna aplikacja FastAPI systemu Finance Track.
-Zarządza cyklem życia bazy danych, endpointami REST oraz logowaniem zdarzeń.
+Zarządza cyklem życia bazy danych, endpointami REST, logowaniem oraz obsługą wyjątków.
 """
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, List
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import inspect
 
@@ -15,7 +16,8 @@ from database import engine, async_session
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
 from crud import get_assets, create_asset
-from utils import logger  # Import polskiego loggera
+from utils import logger
+from exceptions import FinanceException, AssetNotFoundException
 
 
 @asynccontextmanager
@@ -24,7 +26,6 @@ async def lifespan(app: FastAPI):
     Zarządza zdarzeniami startu i zatrzymania aplikacji.
     Przy starcie tworzy tabele (jeśli nie istnieją) oraz loguje uruchomienie.
     """
-    # --- STARTUP ---
     logger.info("Uruchomienie systemu Finance Track – inicjalizacja bazy danych.")
 
     async with engine.begin() as conn:
@@ -42,14 +43,12 @@ async def lifespan(app: FastAPI):
             logger.info("Tabela 'financial_assets' już istnieje – pomijam tworzenie.")
 
     logger.info("System Finance Track wystartował pomyślnie.")
-    yield  # Aplikacja działa
+    yield
 
-    # --- SHUTDOWN ---
     await engine.dispose()
     logger.info("Zamknięcie systemu – silnik bazy danych wyłączony.")
 
 
-# Inicjalizacja FastAPI z lifespanem
 app = FastAPI(
     title="Finance Track",
     version="0.1.0",
@@ -57,16 +56,51 @@ app = FastAPI(
 )
 
 
+# ---------- HANDLERY WYJĄTKÓW ----------
+
+@app.exception_handler(FinanceException)
+async def finance_exception_handler(request: Request, exc: FinanceException):
+    """
+    Przechwytuje wszystkie wyjątki dziedziczące po FinanceException
+    i zwraca ustandaryzowaną odpowiedź JSON z odpowiednim kodem statusu.
+    """
+    logger.error(
+        f"Błąd biznesowy [{exc.status_code}]: {exc.detail} "
+        f"(ścieżka: {request.url.path}, klucz zasobu: asset_id)"
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Loguje standardowe wyjątki HTTP (np. 400, 401, 500) i przekazuje je dalej.
+    """
+    logger.error(
+        f"HTTPException [{exc.status_code}]: {exc.detail} "
+        f"(ścieżka: {request.url.path})"
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+
+# ---------- ZALEŻNOŚCI ----------
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Wstrzykiwanie zależności – generator asynchronicznej sesji.
-    Sesja automatycznie zamykana po obsłużeniu żądania.
     """
     async with async_session() as session:
         yield session
 
 
-# ---------- HEALTHCHECK ----------
+# ---------- ENDPOINTY ----------
+
 @app.get(
     "/status",
     response_model=Dict[str, str],
@@ -78,7 +112,6 @@ async def status():
     return {"status": "ok", "database": "connected"}
 
 
-# ---------- ENDPOINTY CRUD ----------
 @app.get(
     "/assets",
     response_model=List[FinancialAsset],
@@ -86,12 +119,23 @@ async def status():
 )
 async def read_assets(db: AsyncSession = Depends(get_db)):
     """
-    Zwraca listę wszystkich rekordów z tabeli financial_assets.
+    Zwraca listę wszystkich rekordów. Jeśli baza jest pusta, rzuca wyjątek 404.
     """
     try:
         assets = await get_assets()
+        if not assets:
+            # Rzucamy wyjątek z odniesieniem do klucza głównego (asset_id)
+            logger.warning(
+                "Pusta tabela financial_assets – brak aktywów (klucz główny: asset_id)."
+            )
+            raise AssetNotFoundException(
+                detail="Brak aktywów w bazie. Tabela financial_assets jest pusta (klucz główny: asset_id)."
+            )
         logger.info(f"Pobrano listę aktywów – liczba rekordów: {len(assets)}")
         return assets
+    except AssetNotFoundException:
+        # Wyjątek już rzucony, przekaż dalej
+        raise
     except Exception as e:
         logger.error(f"Błąd pobierania aktywów: {str(e)}")
         raise HTTPException(
