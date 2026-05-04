@@ -8,10 +8,10 @@ from typing import AsyncGenerator, Dict, List
 
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import inspect, text                             # <-- import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import inspect
 
-# Lokalne importy
+# Lokalne importy (wszystkie pliki w jednym katalogu)
 from database import engine, async_session
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
@@ -24,11 +24,12 @@ from exceptions import FinanceException, AssetNotFoundException
 async def lifespan(app: FastAPI):
     """
     Zarządza zdarzeniami startu i zatrzymania aplikacji.
-    Przy starcie tworzy tabele (jeśli nie istnieją) oraz loguje uruchomienie.
+    Automatycznie tworzy tabele i wykonuje migrację (kolumna last_updated).
     """
     logger.info("Uruchomienie systemu Finance Track – inicjalizacja bazy danych.")
 
     async with engine.begin() as conn:
+        # 1. Sprawdzenie / utworzenie tabeli financial_assets
         def check_tables_exist(sync_conn):
             inspector = inspect(sync_conn)
             return "financial_assets" in inspector.get_table_names()
@@ -42,6 +43,26 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("Tabela 'financial_assets' już istnieje – pomijam tworzenie.")
 
+        # 2. Migracja: dodanie kolumny last_updated, jeśli brak
+        def column_exists(sync_conn, table_name, column_name):
+            inspector = inspect(sync_conn)
+            cols = [c["name"] for c in inspector.get_columns(table_name)]
+            return column_name in cols
+
+        has_last_updated = await conn.run_sync(
+            column_exists, "financial_assets", "last_updated"
+        )
+        if not has_last_updated:
+            logger.info(
+                "Kolumna 'last_updated' nie istnieje – wykonuję ALTER TABLE."
+            )
+            await conn.execute(
+                text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME")
+            )
+            logger.info("Kolumna 'last_updated' została dodana pomyślnie.")
+        else:
+            logger.info("Kolumna 'last_updated' już istnieje – migracja pominięta.")
+
     logger.info("System Finance Track wystartował pomyślnie.")
     yield
 
@@ -49,6 +70,7 @@ async def lifespan(app: FastAPI):
     logger.info("Zamknięcie systemu – silnik bazy danych wyłączony.")
 
 
+# Inicjalizacja aplikacji FastAPI
 app = FastAPI(
     title="Finance Track",
     version="0.1.0",
@@ -124,7 +146,6 @@ async def read_assets(db: AsyncSession = Depends(get_db)):
     try:
         assets = await get_assets()
         if not assets:
-            # Rzucamy wyjątek z odniesieniem do klucza głównego (asset_id)
             logger.warning(
                 "Pusta tabela financial_assets – brak aktywów (klucz główny: asset_id)."
             )
@@ -134,7 +155,6 @@ async def read_assets(db: AsyncSession = Depends(get_db)):
         logger.info(f"Pobrano listę aktywów – liczba rekordów: {len(assets)}")
         return assets
     except AssetNotFoundException:
-        # Wyjątek już rzucony, przekaż dalej
         raise
     except Exception as e:
         logger.error(f"Błąd pobierania aktywów: {str(e)}")

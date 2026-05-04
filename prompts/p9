@@ -1,0 +1,16 @@
+Prompt 9: Interwencja Korygująca i Migracja Schema
+Treść do wklejenia modelowi:
+
+„UWAGA: Podczas wdrażania poprzednich zmian wystąpiły błędy krytyczne, które musisz natychmiast naprawić. Komunikuj się wyłącznie po polsku.
+
+ZADANIE: Naprawa błędów i migracja bazy
+
+Naprawa Importów: Upewnij się, że w models.py oraz schemas.py zaimportowałeś wszystkie niezbędne moduły, w tym datetime z biblioteki standardowej oraz func z SQLAlchemy.
+
+Rygor Nomenklatury: Absolutnie zabraniam zmiany klucza głównego. Musi to być asset_id (String), a nie ticker_symbol ani id. Popraw to w models.py i crud.py.
+
+Migracja (Kluczowe): Ponieważ SQLite nie aktualizuje schematu automatycznie przy create_all, zmodyfikuj mechanizm startowy w database.py lub main.py. Przy starcie aplikacji, jeśli kolumna last_updated nie istnieje w tabeli financial_assets, wykonaj surowe zapytanie SQL (Alembic nie jest używany): ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;.
+
+Asynchroniczność: Cała operacja ALTER TABLE musi zostać wykonana na asynchronicznym połączeniu.
+
+Potwierdź poprawienie błędów, generując czyste, kompletne pliki models.py, crud.py oraz poprawioną sekcję startową w main.py.”

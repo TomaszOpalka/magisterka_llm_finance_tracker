@@ -3,6 +3,7 @@ Modele bazy danych SQLAlchemy dla systemu Finance Track.
 Definiuje strukturę tabel z zachowaniem standardu asynchronicznego 2.0.
 """
 
+from datetime import datetime                # Poprawiony import
 from sqlalchemy import BigInteger, DateTime, Float, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -15,7 +16,7 @@ class Base(DeclarativeBase):
 class FinancialAsset(Base):
     """
     Model tabeli financial_assets.
-    Klucz główny: asset_id (nie 'id').
+    Klucz główny: asset_id (String) – zgodnie z wymogiem.
     """
     __tablename__ = "financial_assets"
 
@@ -33,7 +34,7 @@ class FinancialAsset(Base):
     # Kapitalizacja rynkowa (duże liczby)
     market_cap: Mapped[int] = mapped_column(BigInteger, nullable=True)
 
-    # Data i czas ostatniej modyfikacji rekordu – ustawiana przez serwer bazy
+    # Data i czas ostatniej modyfikacji – ustawiana przez serwer bazy
     last_updated: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=True
     )

@@ -45,8 +45,7 @@ async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
             ticker_symbol=asset_data.ticker_symbol,
             last_price=asset_data.last_price,
             market_cap=asset_data.market_cap,
-            # Obsługa pola last_updated – jeśli nie podano, pozostanie None,
-            # a baza automatycznie wstawi bieżącą datę/czas (server_default=func.now())
+            # last_updated może być None; baza wstawi func.now()
             last_updated=asset_data.last_updated,
         )
         session.add(asset)

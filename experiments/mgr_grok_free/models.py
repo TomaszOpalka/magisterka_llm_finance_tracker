@@ -17,11 +17,12 @@ class Base(DeclarativeBase):
 class FinancialAsset(Base):
     """
     Tabela przechowująca informacje o aktywach finansowych.
-    Klucz główny: asset_id.
+    Klucz główny: asset_id (zgodnie z kontraktem projektu).
     """
 
     __tablename__ = "financial_assets"
 
+    # KLUCZ GŁÓWNY
     asset_id: Mapped[str] = mapped_column(
         String(50),
         primary_key=True,
