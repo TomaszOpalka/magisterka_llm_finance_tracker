@@ -26,3 +26,16 @@
 2026-05-04 20:47:18 | INFO | Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.
 2026-05-04 20:47:18 | INFO | Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.
 2026-05-04 20:47:21 | INFO | Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.
+2026-05-04 21:42:45 | INFO | Uruchomienie systemu 'Finance Track'.
+2026-05-04 21:42:45 | INFO | Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.
+2026-05-04 21:42:45 | INFO | Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.
+2026-05-04 21:42:55 | WARNING | Błąd biznesowy [404] na ścieżce /assets: Brak danych. Nie odnaleziono żadnego instrumentu (żaden 'asset_id' nie figuruje w bazie). | Przypominacz systemowy: operacje bazują na identyfikatorze 'asset_id'.
+2026-05-04 22:34:48 | INFO | Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.
+2026-05-04 22:34:50 | INFO | Uruchomienie systemu 'Finance Track'.
+2026-05-04 22:34:50 | INFO | Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.
+2026-05-04 22:34:50 | INFO | Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.
+2026-05-04 22:35:02 | INFO | Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.
+2026-05-04 22:35:04 | INFO | Uruchomienie systemu 'Finance Track'.
+2026-05-04 22:35:04 | INFO | Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.
+2026-05-04 22:35:04 | INFO | Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.
+2026-05-04 22:35:12 | INFO | Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.

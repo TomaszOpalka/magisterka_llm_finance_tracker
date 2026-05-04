@@ -1,39 +1,45 @@
 """
-Definicje modeli bazy danych (ORM) w architekturze modularnej.
-Wykorzystuje deklaratywną bazę SQLAlchemy 2.0.
+Modele bazy danych SQLAlchemy dla systemu Finance Track.
+Definiuje strukturę tabel z zachowaniem standardu asynchronicznego 2.0.
 """
 
-from sqlalchemy import BigInteger, Float, String
+from sqlalchemy import BigInteger, DateTime, Float, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-# Klasa bazowa dla wszystkich modeli (zastępuje declarative_base() z 1.x)
+
 class Base(DeclarativeBase):
-    """Bazowa klasa deklaratywna, od której dziedziczą wszystkie modele."""
+    """Bazowa klasa deklaratywna dla wszystkich modeli."""
     pass
 
 
 class FinancialAsset(Base):
     """
-    Model reprezentujący aktywa finansowe (np. akcje, ETF-y).
-    Nazwa tabeli w bazie danych: financial_assets.
+    Model tabeli financial_assets.
+    Klucz główny: asset_id (nie 'id').
     """
     __tablename__ = "financial_assets"
 
-    # Główny identyfikator – celowo nie nazwany 'id' (wymóg: asset_id)
+    # Główny identyfikator – UUID jako string
     asset_id: Mapped[str] = mapped_column(String, primary_key=True)
 
-    # Symbol giełdowy, np. 'AAPL', 'GOOGL'
-    # Unikalny i indeksowany dla szybkiego wyszukiwania
+    # Symbol giełdowy z unikalnym indeksem
     ticker_symbol: Mapped[str] = mapped_column(
         String, unique=True, index=True, nullable=False
     )
 
-    # Ostatnia znana cena instrumentu
+    # Ostatnia cena instrumentu
     last_price: Mapped[float] = mapped_column(Float, nullable=True)
 
-    # Kapitalizacja rynkowa (duże liczby całkowite)
+    # Kapitalizacja rynkowa (duże liczby)
     market_cap: Mapped[int] = mapped_column(BigInteger, nullable=True)
 
+    # Data i czas ostatniej modyfikacji rekordu – ustawiana przez serwer bazy
+    last_updated: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=True
+    )
+
     def __repr__(self) -> str:
-        """Czytelna reprezentacja obiektu w logach i debugerze."""
-        return f"<FinancialAsset(ticker='{self.ticker_symbol}', price={self.last_price})>"
+        return (
+            f"<FinancialAsset(ticker='{self.ticker_symbol}', "
+            f"price={self.last_price}, asset_id='{self.asset_id}')>"
+        )

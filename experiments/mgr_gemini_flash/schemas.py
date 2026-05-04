@@ -1,42 +1,32 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Optional, Annotated
+from datetime import datetime
 
 
 class FinancialAssetBase(BaseModel):
     """
-    Bazowy schemat zawierający wspólne pola dla aktywów finansowych.
-    Używany jako fundament dla innych modeli.
+    Bazowy schemat z rygorystyczną walidacją polską i biznesową.
     """
-    ticker_symbol: str
-    last_price: float
+    # Ticker: tylko wielkie litery, od 1 do 5 znaków (np. AAPL, BTC)
+    ticker_symbol: Annotated[str, Field(pattern=r"^[A-Z]{1,5}$")]
+    
+    # Cena: nie może być ujemna
+    last_price: Annotated[float, Field(ge=0)]
+    
+    # Kapitalizacja rynkowa
     market_cap: int
+    
+    # Pole czasu aktualizacji, domyślnie None
+    last_updated: Optional[datetime] = None
 
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """
-    Schemat używany podczas operacji tworzenia nowego aktywa (POST).
-    Na tym etapie asset_id zazwyczaj nie jest jeszcze znane lub jest generowane.
-    """
-    # Można tu dodać dodatkowe walidacje specyficzne dla procesu tworzenia
+    """Schemat używany przy tworzeniu nowego zasobu."""
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
-    """
-    Schemat używany do zwracania danych z API (odczyt).
-    Zawiera unikalny identyfikator asset_id.
-    """
+    """Pełny schemat odczytu danych z bazy."""
     asset_id: str
 
-    # Konfiguracja Pydantic v2 dla współpracy z ORM (np. SQLAlchemy)
     model_config = ConfigDict(from_attributes=True)
-
-
-class FinancialAssetUpdate(BaseModel):
-    """
-    Opcjonalny schemat do aktualizacji danych (PATCH).
-    Wszystkie pola są opcjonalne, aby umożliwić częściową aktualizację.
-    """
-    ticker_symbol: Optional[str] = None
-    last_price: Optional[float] = None
-    market_cap: Optional[int] = None

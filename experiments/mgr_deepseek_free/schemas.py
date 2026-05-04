@@ -1,36 +1,52 @@
 """
-Schematy Pydantic v2 dla warstwy walidacji danych systemu Finance Track.
-Współpracują z modelem SQLAlchemy FinancialAsset.
+Schematy Pydantic v2 dla systemu Finance Track.
+Zawierają rygorystyczną walidację danych finansowych.
 """
 
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
+# (Alternatywnie z Annotated, ale Field jest czytelniejszy)
 class FinancialAssetBase(BaseModel):
     """
-    Bazowy schemat zawierający wspólne pola dla aktywów finansowych.
-    Pola odpowiadają strukturze tabeli financial_assets (bez klucza głównego).
+    Bazowy schemat wspólny dla tworzenia i odczytu.
+    Pola odpowiadają strukturze tabeli financial_assets.
     """
-    ticker_symbol: str   # Symbol giełdowy, np. 'AAPL'
-    last_price: float     # Ostatnia znana cena instrumentu
-    market_cap: int       # Kapitalizacja rynkowa (duże liczby całkowite)
+
+    # Symbol giełdowy – tylko wielkie litery, długość 1-5 znaków
+    ticker_symbol: str = Field(
+        ...,
+        pattern=r"^[A-Z]{1,5}$",
+        description="Symbol giełdowy (1-5 wielkich liter), np. AAPL",
+    )
+
+    # Ostatnia cena – nie może być ujemna
+    last_price: float = Field(..., ge=0, description="Ostatnia cena instrumentu (>=0)")
+
+    # Kapitalizacja rynkowa (duże liczby całkowite)
+    market_cap: int = Field(..., description="Kapitalizacja rynkowa w jednostkach bazowych")
+
+    # Data ostatniej aktualizacji – domyślnie brak (None), ustawiana przez bazę
+    last_updated: datetime | None = Field(
+        default=None,
+        description="Data i czas ostatniej aktualizacji rekordu",
+    )
 
 
 class FinancialAssetCreate(FinancialAssetBase):
     """
-    Schemat używany podczas tworzenia nowego rekordu aktywu.
+    Schemat do tworzenia nowego aktywu.
     Dziedziczy wszystkie pola z FinancialAssetBase.
-    Nie zawiera identyfikatora – ten jest generowany/nadawany oddzielnie.
     """
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
     """
-    Schemat do odczytu (odpowiedzi API) reprezentujący pełny rekord aktywu.
-    Zawiera dodatkowe pole asset_id (klucz główny) oraz obsługę mapowania ORM.
+    Schemat do odczytu, zawiera klucz główny asset_id.
+    Współpracuje z ORM (from_attributes=True).
     """
-    asset_id: str  # Główny identyfikator aktywu (nigdy nie używamy samego 'id')
+    asset_id: str = Field(..., description="Główny identyfikator aktywu (UUID)")
 
-    # Konfiguracja umożliwiająca tworzenie instancji bezpośrednio z obiektów ORM
     model_config = ConfigDict(from_attributes=True)

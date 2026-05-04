@@ -21,13 +21,14 @@ async def get_assets(db: AsyncSession):
 async def create_asset(db: AsyncSession, asset: FinancialAssetCreate):
     """
     Tworzy nowe aktywo finansowe w bazie danych.
+    Obsługuje pole last_updated.
     """
-    # Tworzenie nowego obiektu modelu SQLAlchemy
     db_asset = FinancialAsset(
-        asset_id=asset.ticker_symbol,   # Używamy ticker_symbol jako asset_id (można zmienić logikę)
+        asset_id=asset.ticker_symbol,          # ticker_symbol używany jako asset_id
         ticker_symbol=asset.ticker_symbol,
         last_price=asset.last_price,
-        market_cap=asset.market_cap
+        market_cap=asset.market_cap,
+        last_updated=asset.last_updated
     )
 
     db.add(db_asset)

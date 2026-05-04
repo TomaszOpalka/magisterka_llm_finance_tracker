@@ -1,37 +1,32 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FinancialAssetBase(BaseModel):
     """
     Podstawowy schemat danych dla instrumentu finansowego.
-    Zawiera wspólne pola używane zarówno przy tworzeniu, jak i odczycie danych.
+    Wzbogacony o rygorystyczną walidację biznesową.
     """
-    ticker_symbol: str
-    last_price: float
+    # Walidacja: od 1 do 5 wielkich liter alfabetu (np. AAPL, TSLA, O)
+    ticker_symbol: str = Field(..., pattern=r'^[A-Z]{1,5}$')
+    
+    # Walidacja: cena nie może być ujemna (większa lub równa 0.0)
+    last_price: float = Field(..., ge=0.0)
+    
     market_cap: int
+    
+    # Nowe pole: data i czas, domyślnie None, aby pozwolić bazie danych wygenerować czas
+    last_updated: Optional[datetime] = None
 
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """
-    Schemat używany podczas operacji tworzenia nowego instrumentu.
-    Dziedziczy pola z klasy bazowej. Na tym etapie asset_id zazwyczaj
-    nie jest jeszcze wymagane (generowane przez system/bazę).
-    """
+    """Schemat używany podczas tworzenia aktywa."""
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
-    """
-    Pełny schemat reprezentujący instrument finansowy zwracany z API.
-    Zawiera unikalny identyfikator asset_id.
-    """
+    """Pełny schemat reprezentujący instrument finansowy zwracany z API."""
     asset_id: str
 
-    # Konfiguracja Pydantic v2 dla współpracy z modelami ORM (np. SQLAlchemy)
     model_config = ConfigDict(from_attributes=True)
-
-
-# Komentarz techniczny:
-# Użycie model_config = ConfigDict(from_attributes=True) pozwala Pydantic 
-# na automatyczne mapowanie obiektów SQLAlchemy na powyższy schemat, 
-# nawet jeśli dane nie są słownikiem (dict), lecz obiektami klas.

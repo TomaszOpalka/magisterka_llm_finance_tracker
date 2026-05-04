@@ -1,0 +1,24 @@
+Prompt 8: Zaawansowana Walidacja i Mapowanie Typów
+Treść do wklejenia modelowi:
+
+„Kontynuujemy projekt 'Finance Track'. Aby przyspieszyć rozwój i zapewnić najwyższą jakość kodu, musimy zoptymalizować nasze schematy Pydantic pod kątem rygorystycznej walidacji i przygotować je do obsługi rzeczywistych danych rynkowych.
+
+ZADANIE: Rozbudowa schemas.py i walidacja biznesowa
+
+Zmodyfikuj plik schemas.py:
+
+Dodaj walidację dla ticker_symbol – musi składać się wyłącznie z wielkich liter i mieć długość od 1 do 5 znaków (użyj Field(pattern=...) lub Annotated).
+
+Dodaj walidację dla last_price – cena nie może być ujemna.
+
+Wprowadź pole last_updated, które będzie automatycznie przyjmować datę i czas (datetime) z domyślną wartością None.
+
+Zaktualizuj plik models.py:
+
+Dodaj kolumnę last_updated typu DateTime z parametrem server_default=func.now().
+
+Zaktualizuj plik crud.py:
+
+Funkcja create_asset musi teraz obsługiwać pole last_updated.
+
+Weryfikacja rygoru: Upewnij się, że w żadnym miejscu nie zmieniłeś nazwy asset_id na id oraz że zachowujesz pełną asynchroniczność i polskie komentarze.”
