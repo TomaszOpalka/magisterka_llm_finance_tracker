@@ -1,42 +1,53 @@
 """
 Schematy walidacji danych dla systemu Finance Track
-z wykorzystaniem biblioteki Pydantic v2.
+z wykorzystaniem Pydantic v2.
 """
 
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FinancialAssetBase(BaseModel):
     """
     Bazowy schemat danych dla aktywów finansowych.
-
-    Zawiera wspólne pola używane przy tworzeniu i odczycie danych.
     """
 
-    ticker_symbol: str  # Symbol giełdowy (np. AAPL)
-    last_price: float  # Ostatnia cena aktywa
-    market_cap: int  # Kapitalizacja rynkowa
+    # Symbol giełdowy: tylko wielkie litery, długość 1–5 znaków
+    ticker_symbol: Annotated[
+        str,
+        Field(
+            pattern=r"^[A-Z]{1,5}$",
+            description="Symbol giełdowy (1-5 wielkich liter)",
+        ),
+    ]
+
+    # Cena nie może być ujemna
+    last_price: Annotated[
+        float,
+        Field(ge=0, description="Cena >= 0"),
+    ]
+
+    # Kapitalizacja rynkowa
+    market_cap: int
+
+    # Data ostatniej aktualizacji (opcjonalna)
+    last_updated: datetime | None = None
 
 
 class FinancialAssetCreate(FinancialAssetBase):
     """
-    Schemat używany do tworzenia nowych aktywów finansowych.
-
-    Dziedziczy wszystkie pola z klasy bazowej.
+    Schemat używany do tworzenia nowych aktywów.
     """
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
     """
-    Schemat używany do odczytu danych aktywów finansowych.
-
-    Rozszerza schemat bazowy o identyfikator asset_id
-    oraz umożliwia współpracę z obiektami ORM.
+    Schemat do odczytu danych z bazy.
     """
 
-    asset_id: str  # Unikalny identyfikator aktywa
+    asset_id: str  # Klucz główny (zgodny z kontraktem)
 
-    # Konfiguracja modelu dla Pydantic v2
-    # Umożliwia tworzenie schematu na podstawie obiektów ORM (np. SQLAlchemy)
     model_config = ConfigDict(from_attributes=True)

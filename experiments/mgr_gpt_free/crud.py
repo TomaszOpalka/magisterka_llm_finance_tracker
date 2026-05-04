@@ -1,5 +1,5 @@
 """
-Warstwa operacji CRUD dla systemu Finance Track.
+Warstwa CRUD dla systemu Finance Track.
 """
 
 from typing import List
@@ -15,18 +15,10 @@ from schemas import FinancialAssetCreate
 
 async def get_assets(db: AsyncSession) -> List[FinancialAsset]:
     """
-    Pobiera wszystkie aktywa finansowe z bazy danych.
-
-    :param db: Asynchroniczna sesja bazy danych
-    :return: Lista obiektów FinancialAsset
+    Pobiera wszystkie aktywa z bazy danych.
     """
-    try:
-        result = await db.execute(select(FinancialAsset))
-        assets = result.scalars().all()
-        return assets
-    except SQLAlchemyError as exc:
-        # W przypadku błędu zwracamy wyjątek wyżej
-        raise exc
+    result = await db.execute(select(FinancialAsset))
+    return result.scalars().all()
 
 
 async def create_asset(
@@ -34,19 +26,16 @@ async def create_asset(
     asset_in: FinancialAssetCreate,
 ) -> FinancialAsset:
     """
-    Tworzy nowe aktywo finansowe w bazie danych.
-
-    :param db: Asynchroniczna sesja bazy danych
-    :param asset_in: Dane wejściowe do utworzenia aktywa
-    :return: Utworzony obiekt FinancialAsset
+    Tworzy nowe aktywo finansowe.
     """
     try:
-        # Generowanie unikalnego identyfikatora asset_id
         new_asset = FinancialAsset(
             asset_id=str(uuid4()),
             ticker_symbol=asset_in.ticker_symbol,
             last_price=asset_in.last_price,
             market_cap=asset_in.market_cap,
+            # Jeśli last_updated przekazane → użyj, w przeciwnym razie DB ustawi automatycznie
+            last_updated=asset_in.last_updated,
         )
 
         db.add(new_asset)
@@ -55,7 +44,6 @@ async def create_asset(
 
         return new_asset
 
-    except SQLAlchemyError as exc:
-        # Wycofanie transakcji w przypadku błędu
+    except SQLAlchemyError:
         await db.rollback()
-        raise exc
+        raise

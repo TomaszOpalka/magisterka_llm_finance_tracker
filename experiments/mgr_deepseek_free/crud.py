@@ -1,13 +1,12 @@
 """
-Moduł operacji CRUD na tabeli financial_assets.
-Korzysta z asynchronicznych sesji SQLAlchemy oraz schematów Pydantic.
+Moduł operacji CRUD dla tabeli financial_assets.
+Obsługuje asynchroniczne sesje i pełną integrację ze schematami Pydantic.
 """
 
 import uuid
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-# Importy absolutne – wszystkie moduły znajdują się w tym samym katalogu
 from database import async_session
 from models import FinancialAsset
 from schemas import FinancialAssetCreate
@@ -18,29 +17,26 @@ async def get_assets() -> list[FinancialAsset]:
     Pobiera wszystkie aktywa finansowe z bazy danych.
 
     Returns:
-        Lista obiektów FinancialAsset (ORM) reprezentujących wszystkie rekordy.
+        Lista obiektów FinancialAsset (ORM).
     """
     async with async_session() as session:
         result = await session.execute(select(FinancialAsset))
-        assets = result.scalars().all()
-        return assets
+        return result.scalars().all()
 
 
 async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
     """
-    Tworzy nowy rekord aktywu finansowego w bazie.
+    Tworzy nowy rekord aktywu finansowego.
 
     Argumenty:
-        asset_data: Schemat Pydantic z danymi nowego aktywu (bez asset_id).
+        asset_data: Zweryfikowany schemat Pydantic z danymi nowego aktywu.
 
     Zwraca:
-        Utworzony obiekt FinancialAsset (ORM) z przypisanym asset_id.
+        Utworzony obiekt FinancialAsset z nadanym asset_id.
 
     Wyjątki:
-        ValueError: gdy zostanie naruszona integralność danych (np. duplikat ticker_symbol).
+        ValueError: naruszenie integralności (np. duplikat ticker_symbol).
     """
-    # Generujemy unikalny identyfikator UUID jako klucz główny.
-    # W schemacie FinancialAssetCreate nie ma pola asset_id, więc tworzymy go tutaj.
     new_id = str(uuid.uuid4())
 
     async with async_session() as session:
@@ -49,6 +45,9 @@ async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
             ticker_symbol=asset_data.ticker_symbol,
             last_price=asset_data.last_price,
             market_cap=asset_data.market_cap,
+            # Obsługa pola last_updated – jeśli nie podano, pozostanie None,
+            # a baza automatycznie wstawi bieżącą datę/czas (server_default=func.now())
+            last_updated=asset_data.last_updated,
         )
         session.add(asset)
         try:
@@ -57,7 +56,7 @@ async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
         except IntegrityError as exc:
             await session.rollback()
             raise ValueError(
-                f"Nie można utworzyć aktywu: naruszono ograniczenie unikalności. "
-                f"Symbol '{asset_data.ticker_symbol}' może już istnieć."
+                f"Nie można utworzyć aktywu. Symbol '{asset_data.ticker_symbol}' "
+                f"może już istnieć lub naruszono unikalność asset_id."
             ) from exc
         return asset
