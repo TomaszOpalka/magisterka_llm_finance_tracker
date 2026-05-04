@@ -1,0 +1,11 @@
+Prompt 7: Zarządzanie konfiguracją (pydantic-settings)
+Zgodnie z planem, wchodzimy w detale konfiguracyjne. To test na to, czy model potrafi wprowadzić profesjonalne zarządzanie zmiennymi środowiskowymi bez psucia modularności.
+
+„Kontynuujemy projekt 'Finance Track'. Nasza aplikacja staje się coraz bardziej złożona,
+ dlatego musimy odejść od twardego kodowania parametrów na rzecz profesjonalnego zarządzania konfiguracją.
+ ZADANIE: Implementacja Pydantic-SettingsStwórz plik config.py, w którym przy użyciu pydantic-settings (klasa BaseSettings)
+  zdefiniujesz konfigurację aplikacji.Parametry do skonfigurowania:DATABASE_URL: Adres do bazy SQLite 
+  (domyślnie: sqlite+aiosqlite:///./finance.db).APP_NAME: Nazwa aplikacji (domyślnie: 'Finance Track').LOG_LEVEL: Poziom logowania (domyślnie: 'INFO').
+  Klasa powinna automatycznie wczytywać dane z pliku .env.Zaktualizuj plik database.py, aby importował DATABASE_URL bezpośrednio z nowej klasy
+   ustawień w config.py.
+Upewnij się, że zachowujesz asynchroniczny charakter połączenia i nie zmieniasz nazewnictwa klucza głównego asset_id w żadnym z plików.”

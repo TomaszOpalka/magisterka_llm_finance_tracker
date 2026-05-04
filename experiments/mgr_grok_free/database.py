@@ -3,15 +3,14 @@ Moduł odpowiedzialny za konfigurację bazy danych w systemie Finance Track.
 Zastosowano asynchroniczną wersję SQLAlchemy 2.0+.
 """
 
-import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
 
-# Konfiguracja asynchronicznego silnika dla SQLite
-DATABASE_URL = "sqlite+aiosqlite:///finance.db"
+from config import settings
 
+
+# Użycie DATABASE_URL z centralnej konfiguracji
 engine = create_async_engine(
-    DATABASE_URL,
+    settings.DATABASE_URL,
     echo=False,
     future=True
 )
@@ -34,4 +33,4 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    print("✓ Baza danych została pomyślnie zainicjalizowana (tabela financial_assets z asset_id).")
+    print(f"✓ Baza danych została pomyślnie zainicjalizowana ({settings.DATABASE_URL})")

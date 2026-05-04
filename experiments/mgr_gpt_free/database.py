@@ -1,5 +1,5 @@
 """
-Konfiguracja asynchronicznego połączenia z bazą danych SQLite
+Konfiguracja asynchronicznego połączenia z bazą danych
 dla systemu Finance Track.
 """
 
@@ -9,13 +9,15 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-# URL połączenia do bazy SQLite (asynchroniczny sterownik aiosqlite)
-DATABASE_URL = "sqlite+aiosqlite:///./finance.db"
+from config import settings
+
+# URL bazy danych pobierany z konfiguracji (config.py / .env)
+DATABASE_URL = settings.DATABASE_URL
 
 # Utworzenie asynchronicznego silnika bazy danych
 engine = create_async_engine(
     DATABASE_URL,
-    echo=False,  # Ustaw na True w celu debugowania zapytań SQL
+    echo=False,
 )
 
 # Fabryka sesji asynchronicznych

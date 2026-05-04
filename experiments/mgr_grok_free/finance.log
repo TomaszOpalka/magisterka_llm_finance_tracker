@@ -9,3 +9,11 @@
 2026-05-02 21:09:38 | INFO | Zamykanie systemu Finance Track
 2026-05-02 21:09:41 | INFO | Uruchomienie systemu Finance Track
 2026-05-02 21:09:41 | INFO | System Finance Track został pomyślnie uruchomiony
+2026-05-03 14:01:28 | ERROR | Błąd biznesowy [404]: Aktywo o asset_id 'brak_rekordów' nie zostało znalezione w bazie danych. | Ścieżka: /assets
+2026-05-03 14:01:32 | ERROR | Błąd biznesowy [404]: Aktywo o asset_id 'brak_rekordów' nie zostało znalezione w bazie danych. | Ścieżka: /assets
+2026-05-03 14:01:33 | ERROR | Błąd biznesowy [404]: Aktywo o asset_id 'brak_rekordów' nie zostało znalezione w bazie danych. | Ścieżka: /assets
+2026-05-03 14:01:38 | INFO | Sprawdzono status systemu
+2026-05-04 21:05:47 | INFO | Zamykanie systemu Finance Track
+2026-05-04 21:05:50 | INFO | Uruchomienie systemu Finance Track
+2026-05-04 21:05:50 | INFO | System Finance Track został pomyślnie uruchomiony
+2026-05-04 21:05:58 | INFO | Zamykanie systemu Finance Track

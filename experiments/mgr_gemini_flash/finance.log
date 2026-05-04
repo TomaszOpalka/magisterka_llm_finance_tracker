@@ -13,3 +13,9 @@
 2026-05-02 21:08:02,003 - INFO - Rozpoczęto procedurę uruchamiania systemu 'Finance Track'.
 2026-05-02 21:08:02,016 - INFO - Baza danych zainicjalizowana pomyślnie (klucz główny: asset_id).
 2026-05-02 21:08:10,513 - INFO - System 'Finance Track' zostaje wyłączony.
+2026-05-03 14:01:09,846 - WARNING - Próba pobrania aktywów zakończona niepowodzeniem - brak danych.
+2026-05-03 14:01:09,888 - ERROR - Wyjątek biznesowy: W bazie danych nie zarejestrowano żadnych aktywów finansowych. | Status: 404
+2026-05-04 20:21:26,424 - WARNING - Próba pobrania aktywów zakończona niepowodzeniem - brak danych.
+2026-05-04 20:21:26,431 - ERROR - Wyjątek biznesowy: W bazie danych nie zarejestrowano żadnych aktywów finansowych. | Status: 404
+2026-05-04 20:21:28,748 - WARNING - Próba pobrania aktywów zakończona niepowodzeniem - brak danych.
+2026-05-04 20:21:28,750 - ERROR - Wyjątek biznesowy: W bazie danych nie zarejestrowano żadnych aktywów finansowych. | Status: 404

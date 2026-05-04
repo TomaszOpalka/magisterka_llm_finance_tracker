@@ -1,11 +1,11 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-# Adres URL do asynchronicznej bazy SQLite (wymaga pakietu aiosqlite)
-DATABASE_URL = "sqlite+aiosqlite:///finance.db"
+# Importujemy instancję ustawień z nowego pliku konfiguracyjnego
+from config import settings
 
-# Utworzenie asynchronicznego silnika bazy danych
-# echo=False wycisza logowanie zapytań SQL do konsoli (można zmienić na True w fazie debugowania)
-engine = create_async_engine(DATABASE_URL, echo=False)
+# Utworzenie asynchronicznego silnika bazy danych z wykorzystaniem adresu URL z ustawień.
+# echo=False wycisza logowanie zapytań SQL do konsoli.
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
 
 # Konfiguracja asynchronicznej fabryki sesji
 AsyncSessionLocal = async_sessionmaker(
