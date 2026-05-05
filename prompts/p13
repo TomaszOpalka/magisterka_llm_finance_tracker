@@ -1,0 +1,32 @@
+Prompt 13: Financial Analytics & Historical Series
+Treść do wklejenia modelowi:
+
+"Continuing the 'Finance Track' project. We need to add analytical capabilities to our system to provide more value than just raw data. Everything in the code must be in English. Explain your logic in Polish under the code block.
+
+TASK: Moving Average Analytics & History
+
+services.py: Add an async function get_historical_data(ticker: str, days: int = 30).
+
+It must fetch historical closing prices using yfinance for the specified period.
+
+Use asyncio.to_thread to keep it non-blocking.
+
+analytics.py (New Module): Create a service to calculate financial metrics.
+
+Implement a function calculate_moving_average(prices: list[float]) that returns the simple moving average (SMA).
+
+Handle cases with insufficient data (e.g., if there are fewer than 'n' days of history).
+
+main.py:
+
+Add a GET endpoint /assets/{ticker_symbol}/analytics.
+
+This endpoint should fetch 30 days of history and return a JSON containing the ticker_symbol and the calculated moving_average_30d.
+
+Requirements:
+
+Maintain asset_id as the primary key.
+
+Keep the snake_case convention for all API responses for now.
+
+Use SQLAlchemy 2.0 and Pydantic v2. Ensure all calculations are mathematically sound and error-handled.

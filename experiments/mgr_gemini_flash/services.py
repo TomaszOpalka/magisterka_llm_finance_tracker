@@ -1,23 +1,44 @@
 import asyncio
 import yfinance as yf
-from typing import Optional
+from typing import List, Optional
 from utils import logger
 
 async def get_stock_price(ticker: str) -> Optional[float]:
     """
-    Fetches the current stock price using yfinance.
-    Wraps synchronous call in a thread to avoid blocking the event loop.
+    Fetches the current spot price for a given ticker.
+    Wraps synchronous yfinance call in a thread to prevent blocking.
     """
     try:
-        # Running synchronous yfinance call in a separate thread
         stock = await asyncio.to_thread(yf.Ticker, ticker)
+        # Using fast_info to minimize data transfer and latency
         data = await asyncio.to_thread(stock.fast_info.get, 'last_price')
         
         if data is None:
-            logger.warning(f"Could not find price data for ticker: {ticker}")
+            logger.warning(f"Price data unavailable for ticker: {ticker}")
             return None
             
         return float(data)
     except Exception as e:
-        logger.error(f"External API error for {ticker}: {str(e)}")
+        logger.error(f"External API error (Price) for {ticker}: {str(e)}")
         return None
+
+async def get_historical_data(ticker: str, days: int = 30) -> List[float]:
+    """
+    Fetches historical closing prices for the last N days.
+    Used primarily for analytical calculations like Moving Averages.
+    """
+    try:
+        stock = await asyncio.to_thread(yf.Ticker, ticker)
+        # Fetching history for the specified period
+        hist = await asyncio.to_thread(stock.history, period=f"{days}d")
+        
+        if hist.empty:
+            logger.warning(f"No historical data found for {ticker} over {days} days.")
+            return []
+            
+        # Extract 'Close' prices and drop any missing values
+        prices = hist['Close'].dropna().tolist()
+        return [float(p) for p in prices]
+    except Exception as e:
+        logger.error(f"External API error (History) for {ticker}: {str(e)}")
+        return []

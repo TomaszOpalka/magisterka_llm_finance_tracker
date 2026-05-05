@@ -3,7 +3,7 @@ Service layer for external stock data integration.
 """
 
 import asyncio
-from typing import Optional
+from typing import Optional, List
 
 import yfinance as yf
 
@@ -17,7 +17,7 @@ class StockServiceException(Exception):
 
 def _fetch_price_sync(ticker: str) -> Optional[float]:
     """
-    Synchronous function to fetch stock price using yfinance.
+    Synchronous function to fetch stock price.
     """
     try:
         stock = yf.Ticker(ticker)
@@ -32,17 +32,49 @@ def _fetch_price_sync(ticker: str) -> Optional[float]:
         return None
 
 
-async def get_stock_price(ticker: str) -> Optional[float]:
+def _fetch_history_sync(ticker: str, days: int) -> List[float]:
     """
-    Asynchronous wrapper for fetching stock price.
-
-    Uses asyncio.to_thread to avoid blocking the event loop.
+    Synchronous function to fetch historical closing prices.
     """
     try:
-        price = await asyncio.to_thread(_fetch_price_sync, ticker)
-        return price
+        stock = yf.Ticker(ticker)
+        data = stock.history(period=f"{days}d")
+
+        if data.empty:
+            return []
+
+        return [float(x) for x in data["Close"].tolist()]
+
+    except Exception:
+        return []
+
+
+async def get_stock_price(ticker: str) -> Optional[float]:
+    """
+    Async wrapper for fetching current stock price.
+    """
+    try:
+        return await asyncio.to_thread(_fetch_price_sync, ticker)
+    except Exception as exc:
+        raise StockServiceException(str(exc)) from exc
+
+
+async def get_historical_data(
+    ticker: str,
+    days: int = 30,
+) -> List[float]:
+    """
+    Async function to fetch historical prices using threads.
+    """
+    try:
+        data = await asyncio.to_thread(_fetch_history_sync, ticker, days)
+
+        if not data:
+            raise StockServiceException(
+                f"No historical data for ticker {ticker}"
+            )
+
+        return data
 
     except Exception as exc:
-        raise StockServiceException(
-            f"Failed to fetch price for ticker {ticker}"
-        ) from exc
+        raise StockServiceException(str(exc)) from exc

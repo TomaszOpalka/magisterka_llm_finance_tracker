@@ -28,3 +28,9 @@ class StockDataException(FinanceException):
     """Raised when external stock data retrieval fails."""
     def __init__(self, detail: str = "Failed to retrieve stock data."):
         super().__init__(status_code=502, detail=detail)
+
+
+class AnalyticsException(FinanceException):
+    """Raised when analytics calculations cannot be performed (e.g., insufficient data)."""
+    def __init__(self, detail: str = "Insufficient data for analytics."):
+        super().__init__(status_code=422, detail=detail)

@@ -1,52 +1,44 @@
 """
-Schematy Pydantic v2 dla systemu Finance Track.
-Zawierają rygorystyczną walidację danych finansowych.
+Schemas (Pydantic v2) for the Finance Track system.
+Includes strict validation and support for ORM models.
 """
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-# (Alternatywnie z Annotated, ale Field jest czytelniejszy)
+
 class FinancialAssetBase(BaseModel):
-    """
-    Bazowy schemat wspólny dla tworzenia i odczytu.
-    Pola odpowiadają strukturze tabeli financial_assets.
-    """
+    """Base schema with common fields for asset creation and reading."""
 
-    # Symbol giełdowy – tylko wielkie litery, długość 1-5 znaków
     ticker_symbol: str = Field(
         ...,
         pattern=r"^[A-Z]{1,5}$",
-        description="Symbol giełdowy (1-5 wielkich liter), np. AAPL",
+        description="Stock ticker symbol (1-5 uppercase letters), e.g., AAPL",
     )
-
-    # Ostatnia cena – nie może być ujemna
-    last_price: float = Field(..., ge=0, description="Ostatnia cena instrumentu (>=0)")
-
-    # Kapitalizacja rynkowa (duże liczby całkowite)
-    market_cap: int = Field(..., description="Kapitalizacja rynkowa w jednostkach bazowych")
-
-    # Data ostatniej aktualizacji – domyślnie brak (None), ustawiana przez bazę
+    last_price: float = Field(..., ge=0, description="Last observed price (>=0)")
+    market_cap: int = Field(..., description="Market capitalization (raw value)")
     last_updated: datetime | None = Field(
         default=None,
-        description="Data i czas ostatniej aktualizacji rekordu",
+        description="Timestamp of the last data update",
     )
 
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """
-    Schemat do tworzenia nowego aktywu.
-    Dziedziczy wszystkie pola z FinancialAssetBase.
-    """
+    """Schema for creating a new asset."""
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
-    """
-    Schemat do odczytu, zawiera klucz główny asset_id.
-    Współpracuje z ORM (from_attributes=True).
-    """
-    asset_id: str = Field(..., description="Główny identyfikator aktywu (UUID)")
+    """Schema for reading an asset, including its primary key."""
+    asset_id: str = Field(..., description="Primary key (UUID)")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AssetAnalytics(BaseModel):
+    """Response schema for the analytics endpoint."""
+    ticker_symbol: str = Field(..., description="Stock ticker symbol")
+    moving_average_30d: float = Field(
+        ..., description="30-day simple moving average of the closing price"
+    )
