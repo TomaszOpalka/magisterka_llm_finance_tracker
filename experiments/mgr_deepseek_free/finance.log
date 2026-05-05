@@ -95,3 +95,14 @@
 [2026-05-05 22:10:16] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
 [2026-05-05 22:10:16] INFO - finance_track - System Finance Track wystartował pomyślnie.
 [2026-05-05 22:10:16] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 22:10:25] INFO - finance_track - Starting Finance Track – initializing database.
+[2026-05-05 22:10:25] INFO - finance_track - Table 'financial_assets' already exists – skipping creation.
+[2026-05-05 22:10:25] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
+[2026-05-05 22:10:25] INFO - finance_track - Finance Track started successfully.
+[2026-05-05 23:07:53] INFO - finance_track - Fetched 0 assets.
+[2026-05-05 23:13:25] INFO - finance_track - Healthcheck requested.
+[2026-05-05 23:13:27] INFO - finance_track - Healthcheck requested.
+[2026-05-05 23:13:28] INFO - finance_track - Healthcheck requested.
+[2026-05-05 23:13:33] INFO - finance_track - Fetched 0 assets.
+[2026-05-05 23:13:34] INFO - finance_track - Fetched 0 assets.
+[2026-05-05 23:53:53] INFO - finance_track - Shutting down – database engine disposed.

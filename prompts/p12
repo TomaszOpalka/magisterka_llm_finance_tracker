@@ -1,0 +1,34 @@
+Mega-Prompt 12: Robust Error Handling & API Validator
+Treść do wklejenia modelowi:
+
+"We are finishing the core functionality of the 'Finance Track' system. I need the application to be production-ready and fully testable. Everything in the code must be in English. Explain your logic in Polish under the code block.
+
+TASK: Error Resilience & Automation Test Script
+
+main.py (Refactor):
+
+Add a global exception handler for yfinance errors (e.g., when the library returns an empty DataFrame or connection fails).
+
+Ensure that if get_stock_price returns None, the /assets/sync endpoint logs a warning and continues with the next ticker instead of crashing the whole process.
+
+test_api.py (New File):
+
+Create a standalone, asynchronous test script using the httpx library.
+
+The script should:
+
+First, create a test asset (e.g., 'AAPL') via POST /assets.
+
+Second, trigger the synchronization via POST /assets/sync.
+
+Third, fetch the asset via GET /assets/AAPL and assert that last_price is no longer 0 and last_updated is not null.
+
+Use asyncio.run() to execute the test.
+
+CRITICAL REQUIREMENTS:
+
+Maintain the asset_id naming convention (DO NOT use 'id').
+
+Ensure the test script points to [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+All comments in English. Use SQLAlchemy 2.0 and Pydantic v2 standards."

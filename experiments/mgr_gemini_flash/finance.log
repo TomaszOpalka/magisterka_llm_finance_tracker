@@ -32,3 +32,8 @@
 2026-05-05 22:51:10,096 - INFO - Weryfikacja bazy: Struktura tabeli jest aktualna.
 2026-05-05 22:51:10,097 - INFO - Baza danych gotowa (Klucz główny: asset_id).
 2026-05-05 22:51:18,978 - INFO - --- Zamykanie systemu 'Finance Track' ---
+2026-05-05 22:51:23,086 - INFO - Starting Finance Track API services...
+2026-05-05 22:51:23,092 - INFO - Database integrity check complete (Primary Key: asset_id).
+2026-05-05 23:07:49,807 - WARNING - Business logic error: No financial assets found in the database. at /assets
+2026-05-05 23:12:25,775 - WARNING - Business logic error: No financial assets found in the database. at /assets
+2026-05-06 00:22:19,388 - INFO - Shutting down Finance Track API services.

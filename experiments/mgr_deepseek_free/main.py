@@ -1,6 +1,7 @@
 """
 Main FastAPI application for Finance Track.
 Manages database lifecycle, REST endpoints, exception handling, and logging.
+Includes robust error recovery for external stock data services.
 """
 
 from contextlib import asynccontextmanager
@@ -14,9 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
-from crud import get_assets, create_asset, update_all_assets_prices, get_asset_by_ticker
+from crud import (
+    get_assets,
+    create_asset,
+    update_all_assets_prices,
+    get_asset_by_ticker,
+)
 from utils import logger
-from exceptions import FinanceException, AssetNotFoundException
+from exceptions import FinanceException, AssetNotFoundException, StockDataException
 
 
 @asynccontextmanager
@@ -77,7 +83,7 @@ app = FastAPI(
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
-    """Handles all custom FinanceException subclasses."""
+    """Handles all custom FinanceException subclasses (including StockDataException)."""
     logger.error(
         f"Business error [{exc.status_code}]: {exc.detail} "
         f"(path: {request.url.path}, resource key: asset_id)"
@@ -93,6 +99,19 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         f"(path: {request.url.path})"
     )
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+# Additional handler for any unhandled exception (safety net)
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Catches any unhandled exception and returns a 500 response."""
+    logger.critical(
+        f"Unhandled exception: {exc} (path: {request.url.path})", exc_info=True
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected internal error occurred."},
+    )
 
 
 # ---------- DEPENDENCIES ----------
@@ -203,8 +222,8 @@ async def sync_prices(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Triggers a bulk update of last_price and last_updated for every asset
-    using the configured stock data service.
+    Triggers a bulk update of last_price and last_updated for every asset.
+    The process is resilient: individual failures do not stop the batch.
     """
     try:
         result = await update_all_assets_prices(db)

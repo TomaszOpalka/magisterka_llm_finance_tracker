@@ -1,5 +1,6 @@
 """
 Main FastAPI application for Finance Track system.
+Production-ready with error resilience.
 """
 
 from contextlib import asynccontextmanager
@@ -26,6 +27,7 @@ from exceptions import (
     AssetNotFoundException,
     DatabaseConnectionException,
 )
+from services import StockServiceException
 from utils import logger
 
 
@@ -34,29 +36,27 @@ async def lifespan(app: FastAPI):
     """
     Application lifecycle management.
     """
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-            result = await conn.execute(
-                text("PRAGMA table_info(financial_assets);")
-            )
-            columns = [row[1] for row in result.fetchall()]
+        result = await conn.execute(
+            text("PRAGMA table_info(financial_assets);")
+        )
+        columns = [row[1] for row in result.fetchall()]
 
-            if "last_updated" not in columns:
-                await conn.execute(
-                    text(
-                        "ALTER TABLE financial_assets "
-                        "ADD COLUMN last_updated DATETIME;"
-                    )
+        if "last_updated" not in columns:
+            await conn.execute(
+                text(
+                    "ALTER TABLE financial_assets "
+                    "ADD COLUMN last_updated DATETIME;"
                 )
+            )
 
-        logger.info(f"{settings.APP_NAME} started (PK: asset_id)")
+    logger.info(f"{settings.APP_NAME} started (PK: asset_id)")
 
-        yield
+    yield
 
-    finally:
-        logger.info("Application shutdown")
+    logger.info("Application shutdown")
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
@@ -87,6 +87,22 @@ async def db_exception_handler(request: Request, exc: SQLAlchemyError):
     return JSONResponse(
         status_code=db_exc.status_code,
         content={"detail": db_exc.detail},
+    )
+
+
+@app.exception_handler(StockServiceException)
+async def stock_service_exception_handler(
+    request: Request,
+    exc: StockServiceException,
+):
+    """
+    Global handler for stock service errors.
+    """
+    logger.error(f"Stock service error: {str(exc)}")
+
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Stock data service unavailable"},
     )
 
 
@@ -129,7 +145,42 @@ async def add_asset(
 
 @app.post("/assets/sync")
 async def sync_prices(db: AsyncSession = Depends(get_db)):
-    updated = await update_all_assets_prices(db)
+    """
+    Synchronize all asset prices with resilience.
+    """
+    from models import FinancialAsset
+    from sqlalchemy import select
+    from services import get_stock_price
+    from datetime import datetime
+
+    result = await db.execute(select(FinancialAsset))
+    assets = result.scalars().all()
+
+    updated = 0
+
+    for asset in assets:
+        try:
+            price = await get_stock_price(asset.ticker_symbol)
+
+            if price is None:
+                logger.warning(
+                    f"No price data for ticker={asset.ticker_symbol} "
+                    f"(asset_id={asset.asset_id})"
+                )
+                continue
+
+            asset.last_price = price
+            asset.last_updated = datetime.utcnow()
+            updated += 1
+
+        except Exception as exc:
+            logger.error(
+                f"Failed to update ticker={asset.ticker_symbol} "
+                f"(asset_id={asset.asset_id}): {exc}"
+            )
+            continue
+
+    await db.commit()
 
     return {
         "status": "success",

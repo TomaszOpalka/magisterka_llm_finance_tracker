@@ -93,3 +93,29 @@
 2026-05-05 22:57:41 | INFO | Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.
 2026-05-05 22:57:41 | INFO | Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).
 2026-05-05 22:57:41 | INFO | Zamykanie aplikacji. Czyszczenie połączeń.
+2026-05-05 22:57:43 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-05 22:57:43 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-05 23:07:48 | WARNING | Business Error [404] at /assets: No financial assets found matching the criteria.
+2026-05-05 23:08:38 | WARNING | Business Error [404] at /assets: No financial assets found matching the criteria.
+2026-05-05 23:09:07 | WARNING | Business Error [404] at /assets: No financial assets found matching the criteria.
+2026-05-05 23:09:09 | WARNING | Business Error [404] at /assets: No financial assets found matching the criteria.
+2026-05-05 23:11:03 | INFO | Added new asset (BD). Asset ID: 99a54b8b-9e9e-4430-976e-3c16703f520a
+2026-05-05 23:12:01 | WARNING | Business Error [404] at /assets/SPY: Asset with ticker 'SPY' not found.
+2026-05-05 23:12:02 | WARNING | Business Error [404] at /assets/SPY: Asset with ticker 'SPY' not found.
+2026-05-05 23:12:02 | WARNING | Business Error [404] at /assets/SPY: Asset with ticker 'SPY' not found.
+2026-05-05 23:12:10 | INFO | Starting mass price synchronization...
+2026-05-05 23:12:15 | ERROR | Error fetching data from yfinance for BD: 'PriceHistory' object has no attribute '_dividends'
+2026-05-05 23:12:15 | INFO | Synchronization complete. 0 assets updated.
+2026-05-06 00:07:30 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:07:37 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:07:38 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 00:07:39 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:07:44 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:07:44 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 00:07:44 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:07:51 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:07:51 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 00:08:14 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:08:26 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:08:26 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 00:13:46 | INFO | Shutting down application. Disposing database engine.
