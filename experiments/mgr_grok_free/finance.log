@@ -56,3 +56,10 @@ FROM financial_assets]
 2026-05-04 23:03:40 | CRITICAL | Nie udało się zainicjalizować bazy danych: name 'logger' is not defined
 2026-05-04 23:40:08 | INFO | Uruchomienie systemu Finance Track
 2026-05-04 23:40:08 | CRITICAL | Nie udało się zainicjalizować bazy danych: name 'logger' is not defined
+2026-05-04 23:40:12 | INFO | Uruchomienie systemu Finance Track
+2026-05-04 23:40:12 | INFO | System Finance Track został pomyślnie uruchomiony
+2026-05-04 23:42:57 | ERROR | Błąd podczas pobierania aktywów: (sqlite3.OperationalError) no such column: financial_assets.last_updated
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.last_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-04 23:42:57 | ERROR | Błąd biznesowy [500]: Nie udało się pobrać listy aktywów | Ścieżka: /assets

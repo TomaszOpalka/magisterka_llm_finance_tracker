@@ -19,3 +19,6 @@
 2026-05-04 23:08:38,304 - INFO - Zamykanie aplikacji Finance Track
 2026-05-04 23:08:40,358 - INFO - Uruchomienie systemu Finance Track - baza gotowa (tabela financial_assets, PK: asset_id)
 2026-05-04 23:08:49,424 - INFO - Zamykanie aplikacji Finance Track
+2026-05-05 20:45:16,390 - INFO - Uruchomienie systemu Finance Track (tabela financial_assets, PK: asset_id)
+2026-05-05 20:45:16,403 - ERROR - B³¹d aplikacji (asset_id): Brak aktywów w bazie danych | URL: http://127.0.0.1:8003/assets
+2026-05-05 20:45:24,470 - INFO - Zamykanie aplikacji Finance Track

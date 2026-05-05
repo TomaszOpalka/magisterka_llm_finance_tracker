@@ -4,20 +4,20 @@ Zarządza cyklem życia bazy danych, endpointami REST, logowaniem oraz obsługą
 """
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Dict, List
+from typing import AsyncGenerator, Dict, List, Optional
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import inspect, text                             # <-- import text
+from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Lokalne importy (wszystkie pliki w jednym katalogu)
+# Lokalne importy
 from database import engine, async_session
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
 from crud import get_assets, create_asset
 from utils import logger
-from exceptions import FinanceException, AssetNotFoundException
+from exceptions import FinanceException
 
 
 @asynccontextmanager
@@ -137,25 +137,30 @@ async def status():
 @app.get(
     "/assets",
     response_model=List[FinancialAsset],
-    summary="Pobierz wszystkie aktywa finansowe",
+    summary="Pobierz aktywa z filtrowaniem, sortowaniem i paginacją",
 )
-async def read_assets(db: AsyncSession = Depends(get_db)):
+async def read_assets(
+    skip: int = Query(0, ge=0, description="Liczba rekordów do pominięcia"),
+    limit: int = Query(10, ge=1, le=100, description="Maksymalna liczba rekordów (1-100)"),
+    min_price: Optional[float] = Query(
+        None, ge=0, description="Minimalna cena do filtrowania"
+    ),
+    sort_by: Optional[str] = Query(
+        "ticker_symbol",
+        description="Kolumna do sortowania (asset_id, ticker_symbol, last_price, market_cap, last_updated)",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Zwraca listę wszystkich rekordów. Jeśli baza jest pusta, rzuca wyjątek 404.
+    Zwraca listę aktywów z opcjonalnym pomijaniem, limitem, filtrem ceny i sortowaniem.
+    W przypadku braku wyników zwracana jest pusta lista.
     """
     try:
-        assets = await get_assets()
-        if not assets:
-            logger.warning(
-                "Pusta tabela financial_assets – brak aktywów (klucz główny: asset_id)."
-            )
-            raise AssetNotFoundException(
-                detail="Brak aktywów w bazie. Tabela financial_assets jest pusta (klucz główny: asset_id)."
-            )
+        assets = await get_assets(
+            skip=skip, limit=limit, min_price=min_price, sort_by=sort_by
+        )
         logger.info(f"Pobrano listę aktywów – liczba rekordów: {len(assets)}")
         return assets
-    except AssetNotFoundException:
-        raise
     except Exception as e:
         logger.error(f"Błąd pobierania aktywów: {str(e)}")
         raise HTTPException(
