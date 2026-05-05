@@ -57,3 +57,15 @@
 [2026-05-04 23:10:01] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
 [2026-05-04 23:10:01] INFO - finance_track - System Finance Track wystartował pomyślnie.
 [2026-05-04 23:12:10] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-04 23:12:12] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-04 23:12:12] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-04 23:12:12] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-04 23:12:12] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-04 23:42:56] WARNING - finance_track - Pusta tabela financial_assets – brak aktywów (klucz główny: asset_id).
+[2026-05-04 23:42:56] ERROR - finance_track - Błąd biznesowy [404]: Brak aktywów w bazie. Tabela financial_assets jest pusta (klucz główny: asset_id). (ścieżka: /assets, klucz zasobu: asset_id)
+[2026-05-05 20:44:15] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 20:44:19] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-05 20:44:19] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-05 20:44:19] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-05 20:44:19] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-05 20:44:28] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.

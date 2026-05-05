@@ -1,0 +1,26 @@
+Prompt 10: Zaawansowane zapytania, Paginacja i Sortowanie
+Treść do wklejenia modelowi:
+
+„Aplikacja 'Finance Track' musi teraz obsługiwać profesjonalne metody filtrowania danych, aby przygotować się na dużą ilość rekordów z S&P 500. Komunikuj się wyłącznie po polsku.
+
+ZADANIE: Rozbudowa endpointu GET /assets
+
+Modyfikacja crud.py:
+
+Zaktualizuj funkcję get_assets, aby przyjmowała parametry: skip (domyślnie 0), limit (domyślnie 10), min_price (opcjonalny float) oraz sort_by (opcjonalny string, domyślnie po ticker_symbol).
+
+Zapytanie musi być asynchroniczne i korzystać z metody select().
+
+Modyfikacja main.py:
+
+Endpoint GET /assets musi teraz przyjmować te parametry jako Query Parameters.
+
+Dodaj walidację: limit nie może przekraczać 100.
+
+Zapewnienie spójności:
+
+Upewnij się, że sortowanie po asset_id działa poprawnie (jeśli użytkownik tego zażąda).
+
+W odpowiedzi API musi zostać zachowana dotychczasowa struktura Pydantic (snake_case).
+
+Pamiętaj o zachowaniu standardów PEP 8, asynchroniczności i komentarzach w języku polskim.”
