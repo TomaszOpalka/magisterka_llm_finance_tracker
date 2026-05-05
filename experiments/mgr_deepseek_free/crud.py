@@ -1,18 +1,22 @@
 """
-Moduł operacji CRUD dla tabeli financial_assets.
-Obsługuje asynchroniczne sesje oraz parametry filtrowania, sortowania i paginacji.
+CRUD operations for the financial_assets table.
+Uses async SQLAlchemy sessions, Pydantic schemas, and external services.
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
+
 from sqlalchemy import select, asc
 from sqlalchemy.exc import IntegrityError
 
 from database import async_session
 from models import FinancialAsset
 from schemas import FinancialAssetCreate
+from services import get_stock_price
+from utils import logger
 
-# Dozwolone pola do sortowania – zabezpieczenie przed niepoprawnym sort_by
+# Allowed fields for dynamic sorting
 ALLOWED_SORT_FIELDS = {
     "asset_id",
     "ticker_symbol",
@@ -29,52 +33,62 @@ async def get_assets(
     sort_by: Optional[str] = "ticker_symbol",
 ) -> list[FinancialAsset]:
     """
-    Pobiera listę aktywów z możliwością pomijania (skip), ograniczania (limit),
-    filtrowania po cenie minimalnej i dynamicznego sortowania.
+    Retrieve assets with optional filtering, sorting, and pagination.
 
-    Argumenty:
-        skip: Liczba rekordów do pominięcia (domyślnie 0).
-        limit: Maksymalna liczba zwracanych rekordów (domyślnie 10, max 100).
-        min_price: Opcjonalna minimalna cena – zwraca aktywa o cenie >= min_price.
-        sort_by: Nazwa kolumny do sortowania rosnącego (domyślnie 'ticker_symbol').
-                 Dozwolone: asset_id, ticker_symbol, last_price, market_cap, last_updated.
+    Args:
+        skip: Records to skip (default 0).
+        limit: Maximum records to return (default 10, max 100).
+        min_price: Optional minimum price filter.
+        sort_by: Column to sort ascending (allowed: asset_id, ticker_symbol,
+                 last_price, market_cap, last_updated).
 
-    Zwraca:
-        Lista obiektów FinancialAsset spełniających kryteria.
+    Returns:
+        List of FinancialAsset ORM objects.
     """
     async with async_session() as session:
         query = select(FinancialAsset)
 
-        # Filtrowanie po cenie minimalnej
         if min_price is not None:
             query = query.where(FinancialAsset.last_price >= min_price)
 
-        # Dynamiczne sortowanie – tylko dla bezpiecznych pól
-        if sort_by not in ALLOWED_SORT_FIELDS:
-            sort_by = "ticker_symbol"
+        # Safe dynamic ordering
+        sort_by = sort_by if sort_by in ALLOWED_SORT_FIELDS else "ticker_symbol"
         column = getattr(FinancialAsset, sort_by)
-        query = query.order_by(asc(column))
-
-        # Paginacja: pomijanie i ograniczanie wyników
-        query = query.offset(skip).limit(limit)
+        query = query.order_by(asc(column)).offset(skip).limit(limit)
 
         result = await session.execute(query)
-        assets = result.scalars().all()
-        return assets
+        return result.scalars().all()
+
+
+async def get_asset_by_ticker(ticker_symbol: str) -> Optional[FinancialAsset]:
+    """
+    Fetch a single asset by its ticker symbol.
+
+    Args:
+        ticker_symbol: Stock symbol (unique).
+
+    Returns:
+        FinancialAsset if found, else None.
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            select(FinancialAsset).where(FinancialAsset.ticker_symbol == ticker_symbol)
+        )
+        return result.scalars().first()
 
 
 async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
     """
-    Tworzy nowy rekord aktywu finansowego.
+    Create a new financial asset record.
 
-    Argumenty:
-        asset_data: Zweryfikowany schemat Pydantic z danymi nowego aktywu.
+    Args:
+        asset_data: Validated Pydantic schema.
 
-    Zwraca:
-        Utworzony obiekt FinancialAsset z nadanym asset_id.
+    Returns:
+        The newly created FinancialAsset object.
 
-    Wyjątki:
-        ValueError: naruszenie integralności (np. duplikat ticker_symbol).
+    Raises:
+        ValueError: If integrity is violated (e.g., duplicate ticker).
     """
     new_id = str(uuid.uuid4())
 
@@ -90,10 +104,59 @@ async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
         try:
             await session.commit()
             await session.refresh(asset)
+            logger.info(f"Created asset {asset.asset_id} ({asset.ticker_symbol}).")
+            return asset
         except IntegrityError as exc:
             await session.rollback()
             raise ValueError(
-                f"Nie można utworzyć aktywu. Symbol '{asset_data.ticker_symbol}' "
-                f"może już istnieć lub naruszono unikalność asset_id."
+                f"Cannot create asset: '{asset_data.ticker_symbol}' may already exist."
             ) from exc
-        return asset
+
+
+async def update_all_assets_prices(db) -> dict:
+    """
+    Update the last_price and last_updated fields for all assets
+    using live stock data from an external service.
+
+    Args:
+        db: Async SQLAlchemy session.
+
+    Returns:
+        Dictionary with counts of updated, skipped, and failed assets.
+    """
+    # Fetch all assets
+    result = await db.execute(select(FinancialAsset))
+    assets = result.scalars().all()
+
+    updated = 0
+    skipped = 0
+    failed = 0
+
+    for asset in assets:
+        try:
+            new_price = await get_stock_price(asset.ticker_symbol)
+            if new_price is not None:
+                asset.last_price = new_price
+                asset.last_updated = datetime.now(timezone.utc)
+                updated += 1
+                logger.debug(f"Updated {asset.ticker_symbol} -> {new_price}")
+            else:
+                logger.warning(
+                    f"No price data for {asset.ticker_symbol} (asset_id={asset.asset_id}); skipped."
+                )
+                skipped += 1
+        except Exception as e:
+            logger.error(
+                f"Failed to update {asset.ticker_symbol} (asset_id={asset.asset_id}): {e}"
+            )
+            failed += 1
+            # Continue with remaining assets
+
+    if updated > 0 or failed == 0:
+        await db.commit()
+        logger.info(f"Batch update: {updated} updated, {skipped} skipped, {failed} failed.")
+    else:
+        await db.rollback()
+        logger.warning("All updates failed – rolling back to preserve previous prices.")
+
+    return {"updated": updated, "skipped": skipped, "failed": failed}

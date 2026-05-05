@@ -19,3 +19,16 @@
 2026-05-04 20:21:26,431 - ERROR - Wyjątek biznesowy: W bazie danych nie zarejestrowano żadnych aktywów finansowych. | Status: 404
 2026-05-04 20:21:28,748 - WARNING - Próba pobrania aktywów zakończona niepowodzeniem - brak danych.
 2026-05-04 20:21:28,750 - ERROR - Wyjątek biznesowy: W bazie danych nie zarejestrowano żadnych aktywów finansowych. | Status: 404
+2026-05-05 20:42:40,126 - INFO - --- Rozpoczęto uruchamianie systemu 'Finance Track' ---
+2026-05-05 20:42:40,177 - INFO - Weryfikacja bazy: Struktura tabeli jest aktualna.
+2026-05-05 20:42:40,179 - INFO - Baza danych gotowa (Klucz główny: asset_id).
+2026-05-05 21:25:14,659 - WARNING - Zablokowano żądanie: Baza danych nie zawiera żadnych aktywów. | Ścieżka: /assets
+2026-05-05 22:36:44,057 - INFO - --- Zamykanie systemu 'Finance Track' ---
+2026-05-05 22:36:57,794 - INFO - --- Rozpoczęto uruchamianie systemu 'Finance Track' ---
+2026-05-05 22:36:57,842 - INFO - Weryfikacja bazy: Struktura tabeli jest aktualna.
+2026-05-05 22:36:57,843 - INFO - Baza danych gotowa (Klucz główny: asset_id).
+2026-05-05 22:51:03,128 - INFO - --- Zamykanie systemu 'Finance Track' ---
+2026-05-05 22:51:10,078 - INFO - --- Rozpoczęto uruchamianie systemu 'Finance Track' ---
+2026-05-05 22:51:10,096 - INFO - Weryfikacja bazy: Struktura tabeli jest aktualna.
+2026-05-05 22:51:10,097 - INFO - Baza danych gotowa (Klucz główny: asset_id).
+2026-05-05 22:51:18,978 - INFO - --- Zamykanie systemu 'Finance Track' ---

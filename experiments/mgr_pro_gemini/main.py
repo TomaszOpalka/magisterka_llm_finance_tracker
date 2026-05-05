@@ -1,94 +1,71 @@
 from contextlib import asynccontextmanager
+from typing import List, Optional, AsyncGenerator
+
 from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
-from typing import List, Optional
 
-# Lokalne importy modułów systemu Finance Track
+# Local module imports
 from database import AsyncSessionLocal, engine
 import models
 import crud
 import schemas
 import exceptions
-from utils import logger, format_market_cap
+from utils import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Zarządza cyklem życia aplikacji i wykonuje surową migrację bazy SQLite.
-    Gwarantuje, że tabela financial_assets posiada wszystkie wymagane kolumny 
-    zanim aplikacja zacznie przyjmować żądania.
+    Manages the FastAPI application lifecycle. 
+    Ensures the 'financial_assets' table and its columns exist.
     """
-    logger.info("Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.")
+    logger.info("Starting 'Finance Track' system. Verifying database structure.")
     
     async with engine.begin() as conn:
-        # Krok 1: Tworzenie tabel, jeśli nie istnieją (create_all pomija istniejące)
+        # Step 1: Create tables if they do not exist
         await conn.run_sync(models.Base.metadata.create_all)
         
-        # Krok 2: Asynchroniczne sprawdzenie kolumn w tabeli 'financial_assets'
+        # Step 2: Check columns asynchronously
         pragma_query = text("PRAGMA table_info(financial_assets);")
         result = await conn.execute(pragma_query)
-        
-        # Wypakowanie nazw kolumn z wyniku zapytania (indeks 1 to nazwa kolumny)
         existing_columns = [row[1] for row in result.fetchall()]
         
-        # Krok 3: Ręczna migracja surowym SQL, jeśli brakuje kolumny 'last_updated'
+        # Step 3: Manual migration if 'last_updated' is missing
         if "last_updated" not in existing_columns:
-            logger.warning("Brak kolumny 'last_updated'. Trwa wykonywanie asynchronicznej migracji (ALTER TABLE)...")
+            logger.warning("Missing 'last_updated' column. Executing ALTER TABLE migration...")
             alter_query = text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;")
             await conn.execute(alter_query)
-            logger.info("Migracja zakończona sukcesem. Dodano 'last_updated'.")
+            logger.info("Migration successful. 'last_updated' column added.")
             
-    logger.info("Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).")
+    logger.info("Database is ready. Primary key 'asset_id' verified.")
     
-    # Przekazanie kontroli do właściwej aplikacji
     yield
     
-    # Akcje wykonywane podczas wyłączania aplikacji
-    logger.info("Zamykanie aplikacji. Czyszczenie połączeń.")
+    logger.info("Shutting down application. Disposing database engine.")
     await engine.dispose()
 
 
-# Inicjalizacja instancji aplikacji FastAPI
 app = FastAPI(title="Finance Track API", lifespan=lifespan)
 
 
 @app.exception_handler(exceptions.FinanceException)
 async def finance_exception_handler(request: Request, exc: exceptions.FinanceException):
-    """
-    Globalny handler dla autorskich wyjątków biznesowych (FinanceException).
-    Zwraca ujednoliconą odpowiedź JSON do klienta i loguje zdarzenie.
-    """
-    logger.warning(
-        f"Błąd biznesowy [{exc.status_code}] na ścieżce {request.url.path}: {exc.detail} "
-        f"| Przypominacz systemowy: operacje bazują na identyfikatorze 'asset_id'."
-    )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+    logger.warning(f"Business Error [{exc.status_code}] at {request.url.path}: {exc.detail}")
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """
-    Globalny handler przechwytujący standardowe wyjątki HTTPException.
-    """
-    logger.error(f"Zgłoszono wyjątek HTTP {exc.status_code} na ścieżce {request.url.path}: {exc.detail}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+    logger.error(f"HTTP Exception {exc.status_code} at {request.url.path}: {exc.detail}")
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
-async def get_db():
-    """
-    Wstrzykiwanie zależności (Dependency Injection): 
-    generator asynchronicznej sesji bazy danych dla każdego żądania.
-    """
+# CRITICAL requirement: Explicit typing for the database dependency
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency injection for database sessions."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -98,47 +75,39 @@ async def get_db():
 
 @app.get("/status")
 async def healthcheck():
-    """
-    Weryfikacja dostępności serwera (Healthcheck).
-    """
     return {"status": "ok", "database": "connected"}
 
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
 async def read_assets(
-    skip: int = Query(0, ge=0, description="Liczba rekordów do pominięcia (paginacja)."),
-    limit: int = Query(10, ge=1, le=100, description="Maksymalna liczba rekordów do pobrania (max 100)."),
-    min_price: Optional[float] = Query(None, ge=0.0, description="Minimalna cena instrumentu."),
-    sort_by: str = Query("ticker_symbol", description="Pole, po którym sortowane są wyniki (np. 'asset_id', 'last_price')."),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    min_price: Optional[float] = Query(None, ge=0.0),
+    sort_by: str = Query("ticker_symbol"),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Pobiera i zwraca listę instrumentów z bazy danych.
-    Obsługuje filtrowanie, paginację oraz sortowanie.
-    Zgłasza błąd AssetNotFoundException, jeśli baza jest pusta lub brak wyników.
-    """
     try:
-        assets = await crud.get_assets(
-            db=db, 
-            skip=skip, 
-            limit=limit, 
-            min_price=min_price, 
-            sort_by=sort_by
-        )
+        assets = await crud.get_assets(db=db, skip=skip, limit=limit, min_price=min_price, sort_by=sort_by)
     except Exception as e:
-        logger.error(f"Błąd zapytania w read_assets: {e}")
+        logger.error(f"Query error in read_assets: {e}")
         raise exceptions.DatabaseConnectionException()
         
     if not assets:
-        raise exceptions.AssetNotFoundException(
-            detail="Brak danych. Nie odnaleziono instrumentów spełniających podane kryteria."
-        )
+        raise exceptions.AssetNotFoundException(detail="No financial assets found matching the criteria.")
 
-    logger.info(
-        f"Pobrano listę aktywów (limit: {limit}, skip: {skip}, sort_by: {sort_by}). "
-        f"Zwracam {len(assets)} rekordów."
-    )
     return assets
+
+
+@app.get("/assets/{ticker_symbol}", response_model=schemas.FinancialAsset)
+async def read_asset_by_ticker(
+    ticker_symbol: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """Fetches a single asset's details by its ticker symbol."""
+    asset = await crud.get_asset_by_ticker(db, ticker_symbol=ticker_symbol.upper())
+    if not asset:
+        raise exceptions.AssetNotFoundException(detail=f"Asset with ticker '{ticker_symbol}' not found.")
+    return asset
 
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
@@ -146,31 +115,29 @@ async def add_asset(
     asset: schemas.FinancialAssetCreate, 
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Dodaje nowe aktywo do bazy danych. 
-    Zwraca kod 201 (Created) po pomyślnym wykonaniu.
-    """
     try:
         created_asset = await crud.create_asset(db, asset)
-        
-        logger.info(
-            f"Dodano nowe aktywo ({created_asset.ticker_symbol}). "
-            f"Zarejestrowany klucz główny (asset_id): {created_asset.asset_id} | "
-            f"Sformatowana kapitalizacja: {format_market_cap(created_asset.market_cap)}"
-        )
+        logger.info(f"Added new asset ({created_asset.ticker_symbol}). Asset ID: {created_asset.asset_id}")
         return created_asset
-        
     except IntegrityError:
-        # Obsługa naruszenia unikalności (np. ticker_symbol już istnieje)
         await db.rollback()
-        raise HTTPException(
-            status_code=400, 
-            detail="Instrument o podanym symbolu (ticker_symbol) już istnieje w systemie."
-        )
+        raise HTTPException(status_code=400, detail="Ticker symbol already exists.")
     except Exception as e:
-        # Wycofanie transakcji w razie innego krytycznego błędu zapisu
         await db.rollback()
-        logger.error(f"Krytyczny błąd podczas zapisu: {e}")
-        raise exceptions.DatabaseConnectionException(
-            detail="Wystąpił nieoczekiwany błąd podczas zapisu aktywa do bazy danych."
-        )
+        logger.error(f"Critical save error: {e}")
+        raise exceptions.DatabaseConnectionException()
+
+
+@app.post("/assets/sync", status_code=200)
+async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
+    """
+    Triggers a mass update of all stock prices in the database using external APIs.
+    """
+    try:
+        logger.info("Starting mass price synchronization...")
+        updated_count = await crud.update_all_assets_prices(db)
+        logger.info(f"Synchronization complete. {updated_count} assets updated.")
+        return {"detail": f"Successfully synchronized {updated_count} assets."}
+    except Exception as e:
+        logger.error(f"Error during synchronization: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred during price synchronization.")

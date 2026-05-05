@@ -69,3 +69,29 @@
 [2026-05-05 20:44:19] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
 [2026-05-05 20:44:19] INFO - finance_track - System Finance Track wystartował pomyślnie.
 [2026-05-05 20:44:28] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 20:44:31] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-05 20:44:31] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-05 20:44:31] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-05 20:44:31] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-05 21:25:17] INFO - finance_track - Pobrano listę aktywów – liczba rekordów: 0
+[2026-05-05 22:08:39] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 22:08:46] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-05 22:08:46] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-05 22:08:46] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-05 22:08:46] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-05 22:09:12] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 22:09:16] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-05 22:09:16] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-05 22:09:16] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-05 22:09:16] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-05 22:09:28] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 22:09:37] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-05 22:09:37] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-05 22:09:37] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-05 22:09:37] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-05 22:09:39] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.
+[2026-05-05 22:10:16] INFO - finance_track - Uruchomienie systemu Finance Track – inicjalizacja bazy danych.
+[2026-05-05 22:10:16] INFO - finance_track - Tabela 'financial_assets' już istnieje – pomijam tworzenie.
+[2026-05-05 22:10:16] INFO - finance_track - Kolumna 'last_updated' już istnieje – migracja pominięta.
+[2026-05-05 22:10:16] INFO - finance_track - System Finance Track wystartował pomyślnie.
+[2026-05-05 22:10:16] INFO - finance_track - Zamknięcie systemu – silnik bazy danych wyłączony.

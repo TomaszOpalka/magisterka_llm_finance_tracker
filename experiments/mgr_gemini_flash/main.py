@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 
 import crud
 import schemas
@@ -14,129 +14,106 @@ from exceptions import FinanceException, AssetNotFoundException
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Zarządza cyklem życia aplikacji.
-    Inicjalizuje bazę danych oraz wykonuje asynchroniczne migracje struktury.
+    Manages the application lifecycle.
+    Initializes database tables and performs schema migrations if necessary.
     """
-    logger.info("--- Rozpoczęto uruchamianie systemu 'Finance Track' ---")
+    logger.info("Starting Finance Track API services...")
     
-    # 1. Tworzenie tabel, jeśli nie istnieją
+    # Create tables using Base.metadata.create_all via conn.run_sync
     await init_db()
     
-    # 2. Asynchroniczna mini-migracja dla SQLite
+    # Maintenance: Ensure SQLite schema is up to date
     async with engine.begin() as conn:
         try:
-            # Sprawdzenie istniejących kolumn w tabeli financial_assets
             result = await conn.execute(text("PRAGMA table_info(financial_assets)"))
             columns = [row[1] for row in result.fetchall()]
             
-            # Dodanie kolumny last_updated, jeśli jej brakuje (migracja schematu)
             if "last_updated" not in columns:
-                logger.info("Migracja: Dodawanie kolumny 'last_updated' do tabeli financial_assets.")
+                logger.info("Migration: Adding last_updated column to financial_assets table.")
                 await conn.execute(text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME"))
-                logger.info("Migracja kolumny zakończona sukcesem.")
-            else:
-                logger.info("Weryfikacja bazy: Struktura tabeli jest aktualna.")
-                
-            logger.info("Baza danych gotowa (Klucz główny: asset_id).")
+            
+            logger.info("Database integrity check complete (Primary Key: asset_id).")
         except Exception as e:
-            logger.error(f"Błąd podczas weryfikacji struktury bazy: {str(e)}")
+            logger.error(f"Schema migration failed: {str(e)}")
 
-    yield  # Aplikacja działa i przyjmuje żądania
-    
-    logger.info("--- Zamykanie systemu 'Finance Track' ---")
+    yield
+    logger.info("Shutting down Finance Track API services.")
 
-# Inicjalizacja aplikacji FastAPI
 app = FastAPI(
     title="Finance Track API",
-    description="System do zarządzania danymi finansowymi z S&P 500",
+    version="3.0.0",
     lifespan=lifespan
 )
 
-# --- Obsługa Wyjątków ---
-
+# Global Exception Handler
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
     """
-    Globalny handler dla niestandardowych wyjątków biznesowych.
-    Loguje zdarzenie i zwraca ujednolicony format JSON.
+    Intercepts business exceptions and returns a standardized JSON error response.
     """
-    logger.warning(f"Zablokowano żądanie: {exc.message} | Ścieżka: {request.url.path}")
+    logger.warning(f"Business logic error: {exc.message} at {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error_type": exc.__class__.__name__,
             "detail": exc.message,
-            "path": request.url.path
+            "path": str(request.url.path)
         }
     )
 
-# --- Zależności (Dependencies) ---
-
-async def get_db():
-    """Generator asynchronicznej sesji bazy danych."""
+# Dependency Injection
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency to provide an asynchronous database session per request.
+    """
     async with async_session() as session:
         yield session
 
-# --- Endpointy API ---
+# --- API Endpoints ---
 
 @app.get("/status", tags=["System"])
 async def health_check():
-    """Endpoint do szybkiej weryfikacji statusu aplikacji."""
-    return {
-        "status": "ok",
-        "database": "connected",
-        "schema_version": "2.0",
-        "primary_key_contract": "asset_id"
-    }
+    """Returns the current operational status of the API."""
+    return {"status": "operational", "database": "connected", "pk_contract": "asset_id"}
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset], tags=["Assets"])
 async def read_assets(
-    skip: int = Query(0, ge=0, description="Liczba pomijanych rekordów"),
-    limit: int = Query(10, ge=1, le=100, description="Maksymalna liczba rekordów (max 100)"),
-    min_price: Optional[float] = Query(None, ge=0, description="Minimalna cena aktywa"),
-    sort_by: str = Query(
-        "ticker_symbol", 
-        pattern="^(ticker_symbol|last_price|market_cap|asset_id)$",
-        description="Pole, po którym nastąpi sortowanie"
-    ),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    min_price: Optional[float] = Query(None, ge=0),
+    sort_by: str = Query("ticker_symbol", pattern="^(ticker_symbol|last_price|market_cap|asset_id)$"),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Pobiera listę aktywów finansowych z obsługą paginacji, filtrowania i sortowania.
-    Rzuca AssetNotFoundException w przypadku braku wyników.
-    """
-    assets = await crud.get_assets(
-        db, 
-        skip=skip, 
-        limit=limit, 
-        min_price=min_price, 
-        sort_by=sort_by
-    )
-    
-    if not assets:
-        # Specjalna obsługa braku danych dla pierwszej strony
-        if skip == 0:
-            raise AssetNotFoundException("Baza danych nie zawiera żadnych aktywów.")
-        return []
-    
-    logger.info(f"Pomyślnie zwrócono {len(assets)} rekordów (sortowanie po: {sort_by}).")
+    """Retrieves assets with pagination, filtering, and sorting."""
+    assets = await crud.get_assets(db, skip, limit, min_price, sort_by)
+    if not assets and skip == 0:
+        raise AssetNotFoundException("No financial assets found in the database.")
     return assets
+
+@app.get("/assets/{ticker_symbol}", response_model=schemas.FinancialAsset, tags=["Assets"])
+async def read_asset_by_ticker(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
+    """Fetches a specific asset by its ticker symbol."""
+    asset = await crud.get_asset_by_ticker(db, ticker_symbol)
+    if not asset:
+        raise AssetNotFoundException(f"Asset with ticker '{ticker_symbol}' not found.")
+    return asset
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201, tags=["Assets"])
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Dodaje nowe aktywo finansowe do systemu.
-    Automatycznie generuje asset_id oraz nadaje znacznik czasu last_updated.
-    """
+    """Registers a new financial asset in the system."""
     try:
-        new_asset = await crud.create_asset(db, asset)
-        logger.info(f"Utworzono nowy zasób: {new_asset.ticker_symbol} (asset_id: {new_asset.asset_id})")
-        return new_asset
+        return await crud.create_asset(db, asset)
     except Exception as e:
-        logger.error(f"Błąd krytyczny przy tworzeniu aktywa: {str(e)}")
-        raise FinanceException("Nie udało się zapisać aktywa. Sprawdź unikalność ticker_symbol.")
+        logger.error(f"Failed to create asset: {str(e)}")
+        raise FinanceException("Integrity error: Possibly a duplicate ticker symbol.")
+
+@app.post("/assets/sync", tags=["Maintenance"])
+async def sync_market_data(db: AsyncSession = Depends(get_db)):
+    """Triggers an asynchronous update of all stock prices from external services."""
+    updated_count = await crud.update_all_assets_prices(db)
+    logger.info(f"Market data sync finished. Updated {updated_count} records.")
+    return {"status": "success", "updated_count": updated_count}
 
 if __name__ == "__main__":
     import uvicorn
-    # Uruchomienie serwera deweloperskiego
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
