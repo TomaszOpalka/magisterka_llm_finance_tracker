@@ -80,3 +80,16 @@
 2026-05-05 21:16:22 | INFO | Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.
 2026-05-05 21:16:22 | INFO | Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).
 2026-05-05 21:22:50 | INFO | Zamykanie aplikacji. Czyszczenie połączeń.
+2026-05-05 21:22:58 | INFO | Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.
+2026-05-05 21:22:58 | INFO | Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).
+2026-05-05 21:25:13 | WARNING | Błąd biznesowy [404] na ścieżce /assets: Brak danych. Nie odnaleziono instrumentów spełniających podane kryteria. | Przypominacz systemowy: operacje bazują na identyfikatorze 'asset_id'.
+2026-05-05 22:56:33 | INFO | Zamykanie aplikacji. Czyszczenie połączeń.
+2026-05-05 22:56:38 | INFO | Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.
+2026-05-05 22:56:38 | INFO | Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).
+2026-05-05 22:56:54 | INFO | Zamykanie aplikacji. Czyszczenie połączeń.
+2026-05-05 22:57:01 | INFO | Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.
+2026-05-05 22:57:01 | INFO | Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).
+2026-05-05 22:57:32 | INFO | Zamykanie aplikacji. Czyszczenie połączeń.
+2026-05-05 22:57:41 | INFO | Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.
+2026-05-05 22:57:41 | INFO | Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).
+2026-05-05 22:57:41 | INFO | Zamykanie aplikacji. Czyszczenie połączeń.

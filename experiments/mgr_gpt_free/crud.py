@@ -1,7 +1,8 @@
 """
-Warstwa CRUD dla systemu Finance Track.
+CRUD operations for Finance Track system.
 """
 
+from datetime import datetime
 from typing import List, Optional
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import FinancialAsset
 from schemas import FinancialAssetCreate
+from services import get_stock_price
 
 
 async def get_assets(
@@ -21,16 +23,13 @@ async def get_assets(
     sort_by: str = "ticker_symbol",
 ) -> List[FinancialAsset]:
     """
-    Pobiera aktywa z bazy danych z filtrowaniem, paginacją i sortowaniem.
+    Retrieve assets with filtering, pagination and sorting.
     """
-    # Budowa zapytania bazowego
     query = select(FinancialAsset)
 
-    # Filtrowanie po minimalnej cenie
     if min_price is not None:
         query = query.where(FinancialAsset.last_price >= min_price)
 
-    # Obsługa sortowania (bezpieczna lista pól)
     allowed_sort_fields = {
         "ticker_symbol": FinancialAsset.ticker_symbol,
         "last_price": FinancialAsset.last_price,
@@ -40,17 +39,28 @@ async def get_assets(
 
     sort_column = allowed_sort_fields.get(
         sort_by,
-        FinancialAsset.ticker_symbol,  # domyślnie
+        FinancialAsset.ticker_symbol,
     )
 
-    query = query.order_by(sort_column)
+    query = query.order_by(sort_column).offset(skip).limit(limit)
 
-    # Paginacja
-    query = query.offset(skip).limit(limit)
-
-    # Wykonanie zapytania
     result = await db.execute(query)
     return result.scalars().all()
+
+
+async def get_asset_by_ticker(
+    db: AsyncSession,
+    ticker_symbol: str,
+) -> Optional[FinancialAsset]:
+    """
+    Retrieve single asset by ticker symbol.
+    """
+    result = await db.execute(
+        select(FinancialAsset).where(
+            FinancialAsset.ticker_symbol == ticker_symbol
+        )
+    )
+    return result.scalars().first()
 
 
 async def create_asset(
@@ -58,7 +68,7 @@ async def create_asset(
     asset_in: FinancialAssetCreate,
 ) -> FinancialAsset:
     """
-    Tworzy nowe aktywo finansowe.
+    Create new financial asset.
     """
     try:
         new_asset = FinancialAsset(
@@ -78,3 +88,27 @@ async def create_asset(
     except SQLAlchemyError:
         await db.rollback()
         raise
+
+
+async def update_all_assets_prices(db: AsyncSession) -> int:
+    """
+    Update prices for all assets using external service.
+
+    Returns number of successfully updated records.
+    """
+    result = await db.execute(select(FinancialAsset))
+    assets = result.scalars().all()
+
+    updated_count = 0
+
+    for asset in assets:
+        price = await get_stock_price(asset.ticker_symbol)
+
+        if price is not None:
+            asset.last_price = price
+            asset.last_updated = datetime.utcnow()
+            updated_count += 1
+
+    await db.commit()
+
+    return updated_count

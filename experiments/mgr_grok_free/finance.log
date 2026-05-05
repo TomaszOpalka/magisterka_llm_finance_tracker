@@ -63,3 +63,8 @@ FROM financial_assets]
 FROM financial_assets]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 2026-05-04 23:42:57 | ERROR | Błąd biznesowy [500]: Nie udało się pobrać listy aktywów | Ścieżka: /assets
+2026-05-05 21:25:18 | ERROR | Błąd podczas pobierania aktywów: (sqlite3.OperationalError) no such column: financial_assets.last_updated
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.last_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-05 21:25:18 | ERROR | Błąd biznesowy [500]: Nie udało się pobrać listy aktywów | Ścieżka: /assets

@@ -1,6 +1,6 @@
 """
-Główna aplikacja FastAPI systemu Finance Track.
-Zarządza cyklem życia bazy danych, endpointami REST, logowaniem oraz obsługą wyjątków.
+Main FastAPI application for Finance Track.
+Manages database lifecycle, REST endpoints, exception handling, and logging.
 """
 
 from contextlib import asynccontextmanager
@@ -11,25 +11,25 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Lokalne importy
 from database import engine, async_session
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate
-from crud import get_assets, create_asset
+from crud import get_assets, create_asset, update_all_assets_prices, get_asset_by_ticker
 from utils import logger
-from exceptions import FinanceException
+from exceptions import FinanceException, AssetNotFoundException
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Zarządza zdarzeniami startu i zatrzymania aplikacji.
-    Automatycznie tworzy tabele i wykonuje migrację (kolumna last_updated).
+    Application lifespan: creates database tables on startup,
+    performs light migration (adds last_updated column if missing),
+    and disposes of the engine on shutdown.
     """
-    logger.info("Uruchomienie systemu Finance Track – inicjalizacja bazy danych.")
+    logger.info("Starting Finance Track – initializing database.")
 
     async with engine.begin() as conn:
-        # 1. Sprawdzenie / utworzenie tabeli financial_assets
+        # Ensure tables exist
         def check_tables_exist(sync_conn):
             inspector = inspect(sync_conn)
             return "financial_assets" in inspector.get_table_names()
@@ -37,13 +37,11 @@ async def lifespan(app: FastAPI):
         table_exists = await conn.run_sync(check_tables_exist)
         if not table_exists:
             await conn.run_sync(Base.metadata.create_all)
-            logger.info(
-                "Utworzono tabelę 'financial_assets' (klucz główny: asset_id)."
-            )
+            logger.info("Created table 'financial_assets' (primary key: asset_id).")
         else:
-            logger.info("Tabela 'financial_assets' już istnieje – pomijam tworzenie.")
+            logger.info("Table 'financial_assets' already exists – skipping creation.")
 
-        # 2. Migracja: dodanie kolumny last_updated, jeśli brak
+        # Migration: add last_updated column if missing
         def column_exists(sync_conn, table_name, column_name):
             inspector = inspect(sync_conn)
             cols = [c["name"] for c in inspector.get_columns(table_name)]
@@ -53,24 +51,21 @@ async def lifespan(app: FastAPI):
             column_exists, "financial_assets", "last_updated"
         )
         if not has_last_updated:
-            logger.info(
-                "Kolumna 'last_updated' nie istnieje – wykonuję ALTER TABLE."
-            )
+            logger.info("Column 'last_updated' missing – executing ALTER TABLE.")
             await conn.execute(
                 text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME")
             )
-            logger.info("Kolumna 'last_updated' została dodana pomyślnie.")
+            logger.info("Column 'last_updated' added successfully.")
         else:
-            logger.info("Kolumna 'last_updated' już istnieje – migracja pominięta.")
+            logger.info("Column 'last_updated' already exists – migration skipped.")
 
-    logger.info("System Finance Track wystartował pomyślnie.")
+    logger.info("Finance Track started successfully.")
     yield
 
     await engine.dispose()
-    logger.info("Zamknięcie systemu – silnik bazy danych wyłączony.")
+    logger.info("Shutting down – database engine disposed.")
 
 
-# Inicjalizacja aplikacji FastAPI
 app = FastAPI(
     title="Finance Track",
     version="0.1.0",
@@ -78,121 +73,143 @@ app = FastAPI(
 )
 
 
-# ---------- HANDLERY WYJĄTKÓW ----------
+# ---------- EXCEPTION HANDLERS ----------
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
-    """
-    Przechwytuje wszystkie wyjątki dziedziczące po FinanceException
-    i zwraca ustandaryzowaną odpowiedź JSON z odpowiednim kodem statusu.
-    """
+    """Handles all custom FinanceException subclasses."""
     logger.error(
-        f"Błąd biznesowy [{exc.status_code}]: {exc.detail} "
-        f"(ścieżka: {request.url.path}, klucz zasobu: asset_id)"
+        f"Business error [{exc.status_code}]: {exc.detail} "
+        f"(path: {request.url.path}, resource key: asset_id)"
     )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """
-    Loguje standardowe wyjątki HTTP (np. 400, 401, 500) i przekazuje je dalej.
-    """
+    """Logs standard HTTP exceptions before returning the response."""
     logger.error(
         f"HTTPException [{exc.status_code}]: {exc.detail} "
-        f"(ścieżka: {request.url.path})"
+        f"(path: {request.url.path})"
     )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
-# ---------- ZALEŻNOŚCI ----------
+# ---------- DEPENDENCIES ----------
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Wstrzykiwanie zależności – generator asynchronicznej sesji.
-    """
+    """Dependency that provides an async database session."""
     async with async_session() as session:
         yield session
 
 
-# ---------- ENDPOINTY ----------
+# ---------- ENDPOINTS ----------
 
 @app.get(
     "/status",
     response_model=Dict[str, str],
-    summary="Healthcheck systemu",
+    summary="Healthcheck",
 )
-async def status():
-    """Zwraca status aplikacji i łączności z bazą."""
-    logger.info("Sprawdzenie statusu aplikacji – zdrowy.")
+async def healthcheck():
+    """Returns application and database connection status."""
+    logger.info("Healthcheck requested.")
     return {"status": "ok", "database": "connected"}
 
 
 @app.get(
     "/assets",
     response_model=List[FinancialAsset],
-    summary="Pobierz aktywa z filtrowaniem, sortowaniem i paginacją",
+    summary="List assets with filtering, sorting, and pagination",
 )
 async def read_assets(
-    skip: int = Query(0, ge=0, description="Liczba rekordów do pominięcia"),
-    limit: int = Query(10, ge=1, le=100, description="Maksymalna liczba rekordów (1-100)"),
+    skip: int = Query(0, ge=0, description="Records to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Max records (1-100)"),
     min_price: Optional[float] = Query(
-        None, ge=0, description="Minimalna cena do filtrowania"
+        None, ge=0, description="Minimum last_price filter"
     ),
     sort_by: Optional[str] = Query(
         "ticker_symbol",
-        description="Kolumna do sortowania (asset_id, ticker_symbol, last_price, market_cap, last_updated)",
+        description="Sort column (asset_id, ticker_symbol, last_price, market_cap, last_updated)",
     ),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Zwraca listę aktywów z opcjonalnym pomijaniem, limitem, filtrem ceny i sortowaniem.
-    W przypadku braku wyników zwracana jest pusta lista.
+    Returns a paginated, filtered, and sorted list of assets.
+    An empty array is returned when no records match.
     """
     try:
         assets = await get_assets(
             skip=skip, limit=limit, min_price=min_price, sort_by=sort_by
         )
-        logger.info(f"Pobrano listę aktywów – liczba rekordów: {len(assets)}")
+        logger.info(f"Fetched {len(assets)} assets.")
         return assets
     except Exception as e:
-        logger.error(f"Błąd pobierania aktywów: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Błąd pobierania aktywów: {str(e)}"
+        logger.error(f"Error fetching assets: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")
+
+
+@app.get(
+    "/assets/{ticker_symbol}",
+    response_model=FinancialAsset,
+    summary="Fetch a single asset by ticker symbol",
+)
+async def read_asset_by_ticker(
+    ticker_symbol: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retrieves the details of a single asset using its ticker symbol.
+    Returns 404 if the asset is not found.
+    """
+    asset = await get_asset_by_ticker(ticker_symbol)
+    if asset is None:
+        logger.warning(f"Asset with ticker '{ticker_symbol}' not found.")
+        raise AssetNotFoundException(
+            detail=f"Asset with ticker '{ticker_symbol}' not found (primary key: asset_id)."
         )
+    logger.info(f"Fetched asset: {asset.ticker_symbol} (asset_id={asset.asset_id})")
+    return asset
 
 
 @app.post(
     "/assets",
     response_model=FinancialAsset,
     status_code=201,
-    summary="Dodaj nowy aktyw finansowy",
+    summary="Create a new financial asset",
 )
 async def create_new_asset(
     asset_data: FinancialAssetCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Tworzy nowy wpis aktywu. Klucz główny `asset_id` generowany automatycznie (UUID).
-    """
+    """Creates a new asset. The primary key (asset_id) is generated automatically."""
     try:
         new_asset = await create_asset(asset_data)
-        logger.info(
-            f"Dodano nowe aktywo: {new_asset.asset_id} "
-            f"(symbol: {new_asset.ticker_symbol})"
-        )
+        logger.info(f"Created asset: {new_asset.asset_id} ({new_asset.ticker_symbol})")
         return new_asset
     except ValueError as e:
-        logger.warning(f"Konflikt podczas dodawania aktywa: {str(e)}")
+        logger.warning(f"Conflict creating asset: {e}")
         raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
-        logger.error(f"Nieoczekiwany błąd przy dodawaniu aktywa: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Nieoczekiwany błąd: {str(e)}"
-        )
+        logger.error(f"Unexpected error creating asset: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")
+
+
+@app.post(
+    "/assets/sync",
+    response_model=Dict[str, int],
+    summary="Sync all asset prices with live market data",
+)
+async def sync_prices(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Triggers a bulk update of last_price and last_updated for every asset
+    using the configured stock data service.
+    """
+    try:
+        result = await update_all_assets_prices(db)
+        logger.info(f"Price sync completed: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Price sync failed: {e}")
+        raise HTTPException(status_code=500, detail="Price synchronization error.")

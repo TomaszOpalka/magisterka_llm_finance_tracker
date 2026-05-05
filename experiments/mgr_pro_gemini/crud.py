@@ -1,9 +1,12 @@
 import uuid
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.sql import func
 
 import models
 import schemas
+import services
 
 
 async def get_assets(
@@ -12,20 +15,16 @@ async def get_assets(
     limit: int = 10, 
     min_price: float | None = None, 
     sort_by: str = "ticker_symbol"
-):
+) -> List[models.FinancialAsset]:
     """
-    Pobiera instrumenty finansowe z bazy danych z uwzględnieniem
-    filtrowania (min_price), paginacji (skip, limit) oraz sortowania (sort_by).
+    Retrieves all financial assets from the database with pagination,
+    filtering, and safe sorting.
     """
-    # Inicjalizacja bazowego zapytania
     query = select(models.FinancialAsset)
     
-    # Zastosowanie opcjonalnego filtru minimalnej ceny
     if min_price is not None:
         query = query.where(models.FinancialAsset.last_price >= min_price)
         
-    # Bezpieczne mapowanie parametrów sortowania na kolumny modelu.
-    # Weryfikacja: Zapewniono obsługę 'asset_id' jako klucza głównego.
     sort_options = {
         "asset_id": models.FinancialAsset.asset_id,
         "ticker_symbol": models.FinancialAsset.ticker_symbol,
@@ -34,21 +33,25 @@ async def get_assets(
         "last_updated": models.FinancialAsset.last_updated
     }
     
-    # Wybór kolumny do sortowania (zabezpieczenie: fallback do ticker_symbol)
     sort_column = sort_options.get(sort_by, models.FinancialAsset.ticker_symbol)
-    
-    # Zastosowanie sortowania i paginacji (offset/limit)
     query = query.order_by(sort_column).offset(skip).limit(limit)
     
-    # Wykonanie asynchronicznego zapytania
     result = await db.execute(query)
-    
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
-async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate):
+async def get_asset_by_ticker(db: AsyncSession, ticker_symbol: str) -> models.FinancialAsset | None:
     """
-    Tworzy nowy instrument finansowy.
+    Retrieves a single financial asset by its unique ticker symbol.
+    """
+    query = select(models.FinancialAsset).where(models.FinancialAsset.ticker_symbol == ticker_symbol)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate) -> models.FinancialAsset:
+    """
+    Creates a new financial asset using a generated asset_id.
     """
     new_asset_id = str(uuid.uuid4())
     
@@ -62,3 +65,32 @@ async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate):
     await db.refresh(db_asset)
     
     return db_asset
+
+
+async def update_all_assets_prices(db: AsyncSession) -> int:
+    """
+    Iterates through all assets in the database, fetches the latest price
+    using the external yfinance service, and updates the database.
+    Commits all changes at the end of the batch operation.
+    """
+    # Fetch all assets without pagination limits for the batch sync
+    query = select(models.FinancialAsset)
+    result = await db.execute(query)
+    assets = result.scalars().all()
+    
+    updated_count = 0
+    
+    for asset in assets:
+        new_price = await services.get_stock_price(asset.ticker_symbol)
+        
+        if new_price is not None:
+            asset.last_price = new_price
+            # Update the timestamp using SQLAlchemy's func.now()
+            asset.last_updated = func.now()
+            updated_count += 1
+            
+    # Commit all the updated prices in a single batch transaction
+    if updated_count > 0:
+        await db.commit()
+        
+    return updated_count

@@ -1,0 +1,35 @@
+
+Mega-Prompt 11: Stock Integration & Total English
+Treść do wklejenia modelowi:
+
+"We are accelerating the 'Finance Track' project. From now on, everything in the code – including comments, docstrings, and loggers – must be in English only. Please explain your logic to me in Polish under the code block.
+
+TASK: Stock Data Integration & Async Services
+
+services.py: Create a new module with an async function get_stock_price(ticker: str). Use the yfinance library.
+
+CRITICAL: Since yfinance is synchronous, you must wrap the call in asyncio.to_thread to prevent blocking the FastAPI event loop.
+
+Handle cases where the ticker is invalid or the API is down by returning None or raising a custom exception.
+
+crud.py: Add an async function update_all_assets_prices(db: AsyncSession). It should:
+
+Fetch all assets from the database.
+
+Iterate through assets and update each last_price using the new service.
+
+Ensure the last_updated field is refreshed.
+
+Commit changes at the end of the batch.
+
+main.py:
+
+Add a POST endpoint /assets/sync to trigger the mass price update.
+
+Add a GET endpoint /assets/{ticker_symbol} to fetch a single asset's details.
+
+CRITICAL: Ensure get_db return type is AsyncGenerator[AsyncSession, None].
+
+CRITICAL: Verify that the lifespan event correctly initializes the database tables using Base.metadata.create_all via conn.run_sync.
+
+Requirements: Use SQLAlchemy 2.0, Pydantic v2, and maintain the asset_id (String) as the primary key. Do not use 'id'. All code must be asynchronous and PEP 8 compliant."
