@@ -7,7 +7,7 @@ import schemas
 
 
 async def get_assets(db: AsyncSession):
-    """Pobiera wszystkie instrumenty finansowe."""
+    """Pobiera wszystkie instrumenty finansowe z bazy danych."""
     query = select(models.FinancialAsset)
     result = await db.execute(query)
     return result.scalars().all()
@@ -15,14 +15,12 @@ async def get_assets(db: AsyncSession):
 
 async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate):
     """
-    Tworzy nowy instrument finansowy, zapewniając poprawne nadanie asset_id 
-    oraz obsługę daty (last_updated).
+    Tworzy nowy instrument finansowy, przypisując prawidłowy asset_id 
+    i pozwalając bazie danych obsłużyć domyślne last_updated.
     """
-    # Ręczne generowanie asset_id
+    # Gwarantujemy użycie właściwego klucza
     new_asset_id = str(uuid.uuid4())
     
-    # Wykluczamy pola, które nie zostały przekazane (np. domyślne last_updated=None),
-    # dzięki czemu SQL sam podłoży func.now() jako server_default
     db_asset = models.FinancialAsset(
         asset_id=new_asset_id,
         **asset.model_dump(exclude_unset=True)
@@ -30,8 +28,6 @@ async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate):
     
     db.add(db_asset)
     await db.commit()
-    
-    # Odświeżamy model, aby pobrać wygenerowany przez bazę danych czas last_updated
     await db.refresh(db_asset)
     
     return db_asset

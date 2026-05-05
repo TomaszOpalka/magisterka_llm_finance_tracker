@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from typing import List
 
 from database import AsyncSessionLocal, engine
@@ -15,16 +16,36 @@ from utils import logger, format_market_cap
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Zarządza cyklem życia aplikacji FastAPI (startup i shutdown)."""
-    logger.info("Uruchomienie systemu 'Finance Track'.")
-    logger.info("Weryfikacja struktury bazy danych. Sprawdzanie obecności klucza głównego: 'asset_id'.")
+    """
+    Zarządza cyklem życia aplikacji i wykonuje surową migrację bazy SQLite.
+    Gwarantuje, że tabela financial_assets posiada wszystkie wymagane kolumny 
+    zanim aplikacja zacznie przyjmować żądania.
+    """
+    logger.info("Uruchomienie systemu 'Finance Track'. Weryfikacja bazy danych.")
     
     async with engine.begin() as conn:
+        # Tworzenie tabel, jeśli nie istnieją (create_all pomija już istniejące)
         await conn.run_sync(models.Base.metadata.create_all)
         
-    logger.info("Inicjalizacja zakończona. Baza danych jest zsynchronizowana i gotowa do pracy.")
+        # Asynchroniczne sprawdzenie kolumn w tabeli 'financial_assets'
+        pragma_query = text("PRAGMA table_info(financial_assets);")
+        result = await conn.execute(pragma_query)
+        
+        # Wypakowanie nazw kolumn z wyniku zapytania
+        existing_columns = [row[1] for row in result.fetchall()]
+        
+        # Ręczna migracja surowym SQL, jeśli brakuje kolumny 'last_updated'
+        if "last_updated" not in existing_columns:
+            logger.warning("Brak kolumny 'last_updated'. Trwa wykonywanie asynchronicznej migracji (ALTER TABLE)...")
+            alter_query = text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;")
+            await conn.execute(alter_query)
+            logger.info("Migracja zakończona sukcesem. Dodano 'last_updated'.")
+            
+    logger.info("Baza danych gotowa do pracy. Sprawdzono zgodność klucza głównego (asset_id).")
+    
     yield
-    logger.info("Zamykanie aplikacji. Trwa bezpieczne czyszczenie zasobów silnika bazy danych.")
+    
+    logger.info("Zamykanie aplikacji. Czyszczenie połączeń.")
     await engine.dispose()
 
 
@@ -38,7 +59,6 @@ async def finance_exception_handler(request: Request, exc: exceptions.FinanceExc
     Globalny handler dla autorskich wyjątków biznesowych (FinanceException).
     Zwraca ujednoliconą odpowiedź JSON do klienta i loguje zdarzenie.
     """
-    # Logowanie błędu biznesowego z zachowaniem wymaganej nomenklatury (asset_id)
     logger.warning(
         f"Błąd biznesowy [{exc.status_code}] na ścieżce {request.url.path}: {exc.detail} "
         f"| Przypominacz systemowy: operacje bazują na identyfikatorze 'asset_id'."
@@ -60,7 +80,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 async def get_db():
-    """Wstrzykiwanie zależności: generator sesji bazy danych."""
+    """Wstrzykiwanie zależności: generator asynchronicznej sesji bazy danych."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -83,10 +103,8 @@ async def read_assets(db: AsyncSession = Depends(get_db)):
     try:
         assets = await crud.get_assets(db)
     except Exception as e:
-        # W przypadku problemu z samym zapytaniem do bazy rzucamy nowy błąd
         raise exceptions.DatabaseConnectionException()
         
-    # Weryfikacja czy lista nie jest pusta
     if not assets:
         raise exceptions.AssetNotFoundException(
             detail="Brak danych. Nie odnaleziono żadnego instrumentu (żaden 'asset_id' nie figuruje w bazie)."

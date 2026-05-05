@@ -2,6 +2,8 @@
 Definicje modeli ORM dla systemu Finance Track.
 """
 
+from datetime import datetime
+
 from sqlalchemy import BigInteger, DateTime, Float, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -21,7 +23,7 @@ class FinancialAsset(Base):
 
     __tablename__ = "financial_assets"
 
-    # Klucz główny (NIE zmieniamy nazwy na 'id')
+    # Klucz główny – zgodnie z kontraktem: asset_id (NIE zmieniamy!)
     asset_id: Mapped[str] = mapped_column(
         String,
         primary_key=True,
@@ -44,8 +46,8 @@ class FinancialAsset(Base):
         nullable=False,
     )
 
-    # Data ostatniej aktualizacji (ustawiana automatycznie przez DB)
-    last_updated: Mapped = mapped_column(
+    # Data ostatniej aktualizacji (domyślnie ustawiana przez bazę)
+    last_updated: Mapped[datetime] = mapped_column(
         DateTime,
         server_default=func.now(),
         nullable=True,

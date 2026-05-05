@@ -21,10 +21,10 @@ async def get_assets(db: AsyncSession):
 async def create_asset(db: AsyncSession, asset: FinancialAssetCreate):
     """
     Tworzy nowe aktywo finansowe w bazie danych.
-    Obsługuje pole last_updated.
+    Klucz główny asset_id jest ustawiany na podstawie ticker_symbol.
     """
     db_asset = FinancialAsset(
-        asset_id=asset.ticker_symbol,          # ticker_symbol używany jako asset_id
+        asset_id=asset.ticker_symbol,      # asset_id pozostaje kluczem głównym
         ticker_symbol=asset.ticker_symbol,
         last_price=asset.last_price,
         market_cap=asset.market_cap,

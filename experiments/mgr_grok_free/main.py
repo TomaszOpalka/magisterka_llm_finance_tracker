@@ -18,18 +18,17 @@ from exceptions import FinanceException, AssetNotFoundException, DatabaseConnect
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Zarządzanie cyklem życia aplikacji.
+    Zarządzanie cyklem życia aplikacji z migracją bazy danych.
     """
     logger.info("Uruchomienie systemu Finance Track")
     try:
-        await init_db()
+        await init_db()                    # Tworzenie tabel + migracja kolumny
         logger.info("System Finance Track został pomyślnie uruchomiony")
     except Exception as e:
         logger.critical(f"Nie udało się zainicjalizować bazy danych: {str(e)}")
         raise
     yield
     logger.info("Zamykanie systemu Finance Track")
-
 
 app = FastAPI(
     title="Finance Track API",

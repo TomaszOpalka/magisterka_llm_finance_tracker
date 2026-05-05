@@ -30,11 +30,10 @@ async def create_asset(
     """
     try:
         new_asset = FinancialAsset(
-            asset_id=str(uuid4()),
+            asset_id=str(uuid4()),  # Zachowanie kontraktu klucza głównego
             ticker_symbol=asset_in.ticker_symbol,
             last_price=asset_in.last_price,
             market_cap=asset_in.market_cap,
-            # Jeśli last_updated przekazane → użyj, w przeciwnym razie DB ustawi automatycznie
             last_updated=asset_in.last_updated,
         )
 
