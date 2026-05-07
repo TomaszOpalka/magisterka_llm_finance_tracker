@@ -13,6 +13,8 @@ import models
 import crud
 import schemas
 import exceptions
+import services
+import analytics
 from utils import logger
 
 
@@ -48,8 +50,11 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+# Application Initialization
 app = FastAPI(title="Finance Track API", lifespan=lifespan)
 
+
+# --- Global Exception Handlers ---
 
 @app.exception_handler(exceptions.FinanceException)
 async def finance_exception_handler(request: Request, exc: exceptions.FinanceException):
@@ -78,14 +83,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
+# --- Dependencies ---
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency injection for database sessions."""
+    """Dependency injection for asynchronous database sessions."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
 
+
+# --- Endpoints ---
 
 @app.get("/status")
 async def healthcheck():
@@ -165,5 +174,45 @@ async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
         }
     except Exception as e:
         logger.error(f"Critical error during synchronization batch: {e}")
-        # Reraise as a custom exception to be caught by the global handler
         raise exceptions.ExternalAPIException(detail="Mass synchronization failed due to external provider issues.")
+
+
+@app.get("/assets/{ticker_symbol}/analytics", status_code=200)
+async def get_asset_analytics(
+    ticker_symbol: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Fetches historical data and calculates the 30-day simple moving average (SMA)
+    for a specific asset.
+    """
+    normalized_ticker = ticker_symbol.upper()
+    
+    # Verify the asset exists in our local database first
+    asset = await crud.get_asset_by_ticker(db, ticker_symbol=normalized_ticker)
+    if not asset:
+        raise exceptions.AssetNotFoundException(
+            detail=f"Asset with ticker '{normalized_ticker}' not found in the tracking system."
+        )
+        
+    # Fetch 30 trading days of historical data
+    logger.info(f"Fetching historical data for {normalized_ticker}...")
+    prices = await services.get_historical_data(normalized_ticker, days=30)
+    
+    # Calculate the 30-day Simple Moving Average
+    sma_30 = analytics.calculate_moving_average(prices, period=30)
+    
+    # Handle insufficient data gracefully
+    if sma_30 is None:
+        logger.warning(f"Failed to calculate SMA for {normalized_ticker} due to insufficient data.")
+        raise HTTPException(
+            status_code=422, 
+            detail="Unprocessable Entity: Insufficient historical market data to calculate the 30-day moving average."
+        )
+        
+    logger.info(f"Successfully calculated 30d SMA for {normalized_ticker}: {sma_30}")
+    
+    return {
+        "ticker_symbol": normalized_ticker,
+        "moving_average_30d": sma_30
+    }

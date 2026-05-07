@@ -1,7 +1,7 @@
 """
 Main FastAPI application for Finance Track.
 Manages database lifecycle, REST endpoints, exception handling, and logging.
-Includes robust error recovery for external stock data services.
+Includes error-resilient price sync and analytics.
 """
 
 from contextlib import asynccontextmanager
@@ -14,15 +14,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import engine, async_session
 from models import Base
-from schemas import FinancialAsset, FinancialAssetCreate
+from schemas import FinancialAsset, FinancialAssetCreate, AssetAnalytics
 from crud import (
     get_assets,
     create_asset,
     update_all_assets_prices,
     get_asset_by_ticker,
 )
+from services import get_historical_data
+from analytics import calculate_moving_average
 from utils import logger
-from exceptions import FinanceException, AssetNotFoundException, StockDataException
+from exceptions import (
+    FinanceException,
+    AssetNotFoundException,
+    AnalyticsException,
+)
 
 
 @asynccontextmanager
@@ -83,7 +89,7 @@ app = FastAPI(
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
-    """Handles all custom FinanceException subclasses (including StockDataException)."""
+    """Handles all custom FinanceException subclasses."""
     logger.error(
         f"Business error [{exc.status_code}]: {exc.detail} "
         f"(path: {request.url.path}, resource key: asset_id)"
@@ -101,7 +107,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
-# Additional handler for any unhandled exception (safety net)
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Catches any unhandled exception and returns a 500 response."""
@@ -232,3 +237,45 @@ async def sync_prices(
     except Exception as e:
         logger.error(f"Price sync failed: {e}")
         raise HTTPException(status_code=500, detail="Price synchronization error.")
+
+
+@app.get(
+    "/assets/{ticker_symbol}/analytics",
+    response_model=AssetAnalytics,
+    summary="Get 30-day moving average for a ticker",
+)
+async def asset_analytics(
+    ticker_symbol: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns the 30-day simple moving average (SMA) of the closing price
+    for the given ticker, based on live market data.
+    """
+    # Verify the asset exists in our database (optional but good practice)
+    asset = await get_asset_by_ticker(ticker_symbol)
+    if asset is None:
+        logger.warning(f"Ticker '{ticker_symbol}' not found in database.")
+        raise AssetNotFoundException(
+            detail=f"Asset with ticker '{ticker_symbol}' not found (primary key: asset_id)."
+        )
+
+    # Fetch 30 days of historical prices
+    try:
+        prices = await get_historical_data(ticker_symbol, days=30)
+    except Exception as e:
+        logger.error(f"Failed to fetch historical data for {ticker_symbol}: {e}")
+        raise HTTPException(status_code=502, detail="External data service error.")
+
+    # Calculate the moving average
+    try:
+        sma = calculate_moving_average(prices, window=30)
+    except AnalyticsException as e:
+        # This includes insufficient data
+        logger.warning(f"Analytics error for {ticker_symbol}: {e.detail}")
+        raise  # Will be caught by the finance_exception_handler
+
+    logger.info(
+        f"Computed 30-day SMA for {ticker_symbol}: {sma}"
+    )
+    return AssetAnalytics(ticker_symbol=ticker_symbol, moving_average_30d=sma)

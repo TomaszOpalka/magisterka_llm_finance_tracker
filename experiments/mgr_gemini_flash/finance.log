@@ -37,3 +37,22 @@
 2026-05-05 23:07:49,807 - WARNING - Business logic error: No financial assets found in the database. at /assets
 2026-05-05 23:12:25,775 - WARNING - Business logic error: No financial assets found in the database. at /assets
 2026-05-06 00:22:19,388 - INFO - Shutting down Finance Track API services.
+2026-05-06 00:22:25,143 - INFO - --- Finance Track System: Starting Services ---
+2026-05-06 00:22:25,157 - INFO - Database verification: Schema is current (Primary Key: asset_id).
+2026-05-06 00:24:34,038 - WARNING - Business Exception: No assets found in the database. | URL: /assets
+2026-05-06 00:30:04,793 - INFO - Executing resilient synchronization...
+2026-05-06 00:30:04,837 - WARNING - Could not find price data for ticker: AAPL
+2026-05-06 00:30:42,452 - ERROR - Creation failed for AAPL: (sqlite3.IntegrityError) UNIQUE constraint failed: financial_assets.ticker_symbol
+[SQL: INSERT INTO financial_assets (asset_id, ticker_symbol, last_price, market_cap, last_updated) VALUES (?, ?, ?, ?, ?)]
+[parameters: ('a7ab2416-5358-41a1-aeb8-083ba7d8f2d4', 'AAPL', 0.0, 2500000000000, '2026-05-06 00:30:42.425093')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-05-06 00:30:42,459 - WARNING - Business Exception: Could not create asset. Ensure the ticker symbol is unique. | URL: /assets
+2026-05-06 00:30:42,459 - INFO - Executing resilient synchronization...
+2026-05-06 00:30:42,459 - WARNING - Could not find price data for ticker: AAPL
+2026-05-06 01:04:40,132 - INFO - --- Finance Track System: Shutting Down ---
+2026-05-06 01:04:46,705 - INFO - --- Finance Track System: Starting Services ---
+2026-05-06 01:04:46,730 - INFO - Database verification: Schema is current (Primary Key: asset_id).
+2026-05-06 01:06:09,635 - INFO - --- Finance Track System: Shutting Down ---
+2026-05-06 01:06:15,255 - INFO - --- Finance Track System: Starting Services ---
+2026-05-06 01:06:15,270 - INFO - Database verification: Schema is current (Primary Key: asset_id).
+2026-05-06 01:06:32,425 - INFO - --- Finance Track System: Shutting Down ---

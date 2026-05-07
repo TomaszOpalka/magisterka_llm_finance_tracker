@@ -1,33 +1,38 @@
 """
 Main FastAPI application for Finance Track system.
-Production-ready with error resilience.
+Production-ready with analytics and external data integration.
 """
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import AsyncGenerator, List, Optional
 
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import async_session, engine
-from models import Base
+from models import Base, FinancialAsset
 from schemas import FinancialAsset, FinancialAssetCreate
 from crud import (
     get_assets,
     create_asset,
-    update_all_assets_prices,
     get_asset_by_ticker,
 )
+from services import (
+    get_stock_price,
+    get_historical_data,
+    StockServiceException,
+)
+from analytics import calculate_moving_average
 from exceptions import (
     FinanceException,
     AssetNotFoundException,
     DatabaseConnectionException,
 )
-from services import StockServiceException
 from utils import logger
 
 
@@ -35,10 +40,12 @@ from utils import logger
 async def lifespan(app: FastAPI):
     """
     Application lifecycle management.
+    Initializes database and applies lightweight migration.
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+        # SQLite schema check for last_updated column
         result = await conn.execute(
             text("PRAGMA table_info(financial_assets);")
         )
@@ -59,7 +66,10 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown")
 
 
-app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+app = FastAPI(
+    title=settings.APP_NAME,
+    lifespan=lifespan,
+)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -71,7 +81,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @app.exception_handler(FinanceException)
-async def finance_exception_handler(request: Request, exc: FinanceException):
+async def finance_exception_handler(
+    request: Request,
+    exc: FinanceException,
+):
     logger.error(f"Finance error (asset_id): {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
@@ -80,8 +93,12 @@ async def finance_exception_handler(request: Request, exc: FinanceException):
 
 
 @app.exception_handler(SQLAlchemyError)
-async def db_exception_handler(request: Request, exc: SQLAlchemyError):
+async def db_exception_handler(
+    request: Request,
+    exc: SQLAlchemyError,
+):
     logger.error(f"Database error (asset_id): {str(exc)}")
+
     db_exc = DatabaseConnectionException()
 
     return JSONResponse(
@@ -95,15 +112,23 @@ async def stock_service_exception_handler(
     request: Request,
     exc: StockServiceException,
 ):
-    """
-    Global handler for stock service errors.
-    """
     logger.error(f"Stock service error: {str(exc)}")
 
     return JSONResponse(
         status_code=503,
         content={"detail": "Stock data service unavailable"},
     )
+
+
+@app.get("/status")
+async def healthcheck() -> dict:
+    """
+    Healthcheck endpoint.
+    """
+    return {
+        "status": "ok",
+        "database": "connected",
+    }
 
 
 @app.get("/assets", response_model=List[FinancialAsset])
@@ -114,6 +139,9 @@ async def read_assets(
     sort_by: str = Query("ticker_symbol"),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Retrieve assets with filtering and pagination.
+    """
     assets = await get_assets(db, skip, limit, min_price, sort_by)
 
     if not assets:
@@ -127,6 +155,9 @@ async def read_asset(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Retrieve a single asset by ticker.
+    """
     asset = await get_asset_by_ticker(db, ticker_symbol)
 
     if not asset:
@@ -140,19 +171,17 @@ async def add_asset(
     asset_in: FinancialAssetCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Create new asset.
+    """
     return await create_asset(db, asset_in)
 
 
 @app.post("/assets/sync")
 async def sync_prices(db: AsyncSession = Depends(get_db)):
     """
-    Synchronize all asset prices with resilience.
+    Synchronize asset prices from external API with resilience.
     """
-    from models import FinancialAsset
-    from sqlalchemy import select
-    from services import get_stock_price
-    from datetime import datetime
-
     result = await db.execute(select(FinancialAsset))
     assets = result.scalars().all()
 
@@ -185,4 +214,29 @@ async def sync_prices(db: AsyncSession = Depends(get_db)):
     return {
         "status": "success",
         "updated_records": updated,
+    }
+
+
+@app.get("/assets/{ticker_symbol}/analytics")
+async def get_asset_analytics(
+    ticker_symbol: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return 30-day moving average analytics.
+    """
+    asset = await get_asset_by_ticker(db, ticker_symbol)
+
+    if not asset:
+        raise AssetNotFoundException()
+
+    prices = await get_historical_data(ticker_symbol, days=30)
+    moving_avg = calculate_moving_average(prices)
+
+    if moving_avg is None:
+        raise StockServiceException("Insufficient data for analytics")
+
+    return {
+        "ticker_symbol": ticker_symbol,
+        "moving_average_30d": moving_avg,
     }

@@ -119,3 +119,18 @@
 2026-05-06 00:08:26 | INFO | Starting 'Finance Track' system. Verifying database structure.
 2026-05-06 00:08:26 | INFO | Database is ready. Primary key 'asset_id' verified.
 2026-05-06 00:13:46 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:13:59 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:13:59 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 00:24:32 | ERROR | Query error in read_assets: module 'crud' has no attribute 'get_assets'
+2026-05-06 00:24:32 | WARNING | Business Error [503] at /assets: Database connection error occurred.
+2026-05-06 00:30:03 | ERROR | Critical save error: module 'crud' has no attribute 'create_asset'
+2026-05-06 00:30:03 | WARNING | Business Error [503] at /assets: Database connection error occurred.
+2026-05-06 00:30:41 | ERROR | Critical save error: module 'crud' has no attribute 'create_asset'
+2026-05-06 00:30:41 | WARNING | Business Error [503] at /assets: Database connection error occurred.
+2026-05-06 00:58:05 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:58:11 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:58:11 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 00:58:52 | INFO | Shutting down application. Disposing database engine.
+2026-05-06 00:58:57 | INFO | Starting 'Finance Track' system. Verifying database structure.
+2026-05-06 00:58:57 | INFO | Database is ready. Primary key 'asset_id' verified.
+2026-05-06 01:00:21 | INFO | Shutting down application. Disposing database engine.

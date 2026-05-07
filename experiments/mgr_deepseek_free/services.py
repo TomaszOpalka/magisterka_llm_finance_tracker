@@ -4,6 +4,7 @@ Wraps yfinance (synchronous) in asyncio.to_thread to avoid blocking the event lo
 """
 
 import asyncio
+from typing import List
 import yfinance as yf
 from exceptions import StockDataException
 from utils import logger
@@ -23,9 +24,7 @@ async def get_stock_price(ticker: str) -> float | None:
         StockDataException: If the ticker is invalid or the API call fails.
     """
     try:
-        # yfinance is synchronous – run it in a thread to avoid blocking
         stock = await asyncio.to_thread(yf.Ticker, ticker)
-        # Fetch 5-day history to ensure we get at least one valid closing price
         hist = await asyncio.to_thread(stock.history, period="5d")
         if hist.empty:
             logger.warning(f"No price data found for ticker {ticker}.")
@@ -37,4 +36,35 @@ async def get_stock_price(ticker: str) -> float | None:
         logger.error(f"Failed to fetch price for {ticker}: {e}")
         raise StockDataException(
             detail=f"Unable to retrieve data for '{ticker}'. The symbol may be invalid or the market is closed."
+        ) from e
+
+
+async def get_historical_data(ticker: str, days: int = 30) -> List[float]:
+    """
+    Fetch historical closing prices for a given ticker over a specified number of days.
+
+    Args:
+        ticker: Stock symbol.
+        days: Number of calendar days to look back (passed to yfinance period).
+
+    Returns:
+        List of closing prices (oldest first). May be empty if no data available.
+
+    Raises:
+        StockDataException: If the request to yfinance fails completely.
+    """
+    try:
+        stock = await asyncio.to_thread(yf.Ticker, ticker)
+        # Use period=f"{days}d" to get the last N days of data
+        hist = await asyncio.to_thread(stock.history, period=f"{days}d")
+        if hist.empty:
+            logger.warning(f"No historical data found for {ticker} in the last {days} days.")
+            return []
+        prices = hist["Close"].tolist()
+        logger.info(f"Fetched {len(prices)} historical prices for {ticker}.")
+        return prices
+    except Exception as e:
+        logger.error(f"Failed to fetch historical data for {ticker}: {e}")
+        raise StockDataException(
+            detail=f"Unable to retrieve historical data for '{ticker}'."
         ) from e
