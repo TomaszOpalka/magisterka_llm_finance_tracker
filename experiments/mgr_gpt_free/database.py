@@ -1,6 +1,5 @@
 """
-Konfiguracja asynchronicznego połączenia z bazą danych
-dla systemu Finance Track.
+Asynchronous database configuration for Finance Track.
 """
 
 from sqlalchemy.ext.asyncio import (
@@ -11,16 +10,16 @@ from sqlalchemy.ext.asyncio import (
 
 from config import settings
 
-# URL bazy danych pobierany z konfiguracji (config.py / .env)
+# Database URL loaded from environment configuration
 DATABASE_URL = settings.DATABASE_URL
 
-# Utworzenie asynchronicznego silnika bazy danych
+# Async SQLAlchemy engine
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
 )
 
-# Fabryka sesji asynchronicznych
+# Async session factory
 async_session = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,

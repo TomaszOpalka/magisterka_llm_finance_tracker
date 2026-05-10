@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  finance-track:
+    build: .
+    container_name: finance-track
+
+    ports:
+      - "8003:8003"
+
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////app/data/finance.db
+      APP_NAME: Finance Track
+      LOG_LEVEL: INFO
+
+    volumes:
+      - finance_data:/app/data
+
+volumes:
+  finance_data:

@@ -1,7 +1,7 @@
 """
 Main FastAPI application for Finance Track.
 Manages database lifecycle, REST endpoints, exception handling, and logging.
-Includes error-resilient price sync and analytics.
+Includes error-resilient price sync, analytics, and a healthcheck.
 """
 
 from contextlib import asynccontextmanager
@@ -12,7 +12,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import engine, async_session
+# Local application imports
+from database import engine, async_session   # engine created with settings.DATABASE_URL
 from models import Base
 from schemas import FinancialAsset, FinancialAssetCreate, AssetAnalytics
 from crud import (
@@ -31,6 +32,7 @@ from exceptions import (
 )
 
 
+# ---------- LIFESPAN (startup/shutdown) ----------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -41,7 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Finance Track – initializing database.")
 
     async with engine.begin() as conn:
-        # Ensure tables exist
+        # 1. Create tables if they don't exist
         def check_tables_exist(sync_conn):
             inspector = inspect(sync_conn)
             return "financial_assets" in inspector.get_table_names()
@@ -53,7 +55,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("Table 'financial_assets' already exists – skipping creation.")
 
-        # Migration: add last_updated column if missing
+        # 2. Migration: add last_updated column if it's missing
         def column_exists(sync_conn, table_name, column_name):
             inspector = inspect(sync_conn)
             cols = [c["name"] for c in inspector.get_columns(table_name)]
@@ -78,6 +80,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down – database engine disposed.")
 
 
+# ---------- FASTAPI APP ----------
 app = FastAPI(
     title="Finance Track",
     version="0.1.0",
@@ -252,7 +255,7 @@ async def asset_analytics(
     Returns the 30-day simple moving average (SMA) of the closing price
     for the given ticker, based on live market data.
     """
-    # Verify the asset exists in our database (optional but good practice)
+    # Verify the asset exists in our database
     asset = await get_asset_by_ticker(ticker_symbol)
     if asset is None:
         logger.warning(f"Ticker '{ticker_symbol}' not found in database.")
@@ -271,11 +274,8 @@ async def asset_analytics(
     try:
         sma = calculate_moving_average(prices, window=30)
     except AnalyticsException as e:
-        # This includes insufficient data
         logger.warning(f"Analytics error for {ticker_symbol}: {e.detail}")
         raise  # Will be caught by the finance_exception_handler
 
-    logger.info(
-        f"Computed 30-day SMA for {ticker_symbol}: {sma}"
-    )
+    logger.info(f"Computed 30-day SMA for {ticker_symbol}: {sma}")
     return AssetAnalytics(ticker_symbol=ticker_symbol, moving_average_30d=sma)

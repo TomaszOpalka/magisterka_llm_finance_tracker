@@ -1,6 +1,5 @@
 """
-Moduł konfiguracji aplikacji Finance Track.
-Wykorzystuje pydantic-settings do zarządzania ustawieniami.
+Application configuration module for Finance Track.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,22 +7,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
-    Klasa przechowująca konfigurację aplikacji.
-
-    Wartości mogą być nadpisywane przez zmienne środowiskowe
-    lub plik .env.
+    Centralized application settings.
     """
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///./finance.db"
+    DATABASE_URL: str = (
+        "sqlite+aiosqlite:///./finance.db"
+    )
+
     APP_NAME: str = "Finance Track"
+
     LOG_LEVEL: str = "INFO"
 
-    # Konfiguracja Pydantic Settings (ładowanie z pliku .env)
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 
-# Instancja ustawień używana w całej aplikacji
 settings = Settings()
