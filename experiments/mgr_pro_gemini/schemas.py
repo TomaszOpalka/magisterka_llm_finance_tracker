@@ -30,3 +30,12 @@ class FinancialAsset(FinancialAssetBase):
     asset_id: str
 
     model_config = ConfigDict(from_attributes=True)
+
+class AnalyticsResponse(BaseModel):
+    """
+    Schema for structuring the output of the analytics endpoint.
+    All fields use strict snake_case naming conventions.
+    """
+    ticker_symbol: str
+    moving_average_30d: Optional[float] = None
+    rsi_14: Optional[float] = None

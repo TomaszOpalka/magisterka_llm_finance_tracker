@@ -176,35 +176,49 @@ async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
         raise exceptions.ExternalAPIException(detail="Mass synchronization failed due to external provider issues.")
 
 
-@app.get("/assets/{ticker_symbol}/analytics", status_code=200)
+@app.get("/assets/{ticker_symbol}/analytics", response_model=schemas.AnalyticsResponse, status_code=200)
 async def get_asset_analytics(
     ticker_symbol: str, 
     db: AsyncSession = Depends(get_db)
 ):
-    """Fetches historical data and calculates the 30-day simple moving average (SMA)."""
+    """
+    Fetches historical data and calculates technical indicators (30-day SMA and 14-day RSI).
+    Includes a strict database check before triggering external API calls.
+    """
     normalized_ticker = ticker_symbol.upper()
     
+    # CRITICAL DEPENDENCY CHECK: Ensure the asset exists in our database first.
+    # This prevents abusing the external yfinance API with invalid or untracked tickers.
     asset = await crud.get_asset_by_ticker(db, ticker_symbol=normalized_ticker)
     if not asset:
         raise exceptions.AssetNotFoundException(
             detail=f"Asset with ticker '{normalized_ticker}' not found in the tracking system."
         )
         
-    logger.info(f"Fetching historical data for {normalized_ticker}...")
-    prices = await services.get_historical_data(normalized_ticker, days=30)
+    logger.info(f"Fetching historical data for {normalized_ticker} to compute analytics...")
     
+    # Fetch 60 trading days of historical data.
+    # RSI calculations (especially Wilder's Smoothing) become much more accurate 
+    # when fed more historical data than just the raw minimum required.
+    prices = await services.get_historical_data(normalized_ticker, days=60)
+    
+    # Calculate indicators mathematically
     sma_30 = analytics.calculate_moving_average(prices, period=30)
+    rsi_14 = analytics.calculate_rsi(prices, periods=14)
     
-    if sma_30 is None:
-        logger.warning(f"Failed to calculate SMA for {normalized_ticker} due to insufficient data.")
+    # If both calculations fail (e.g., an IPO stock with only 5 days of history), reject the request
+    if sma_30 is None and rsi_14 is None:
+        logger.warning(f"Failed to calculate analytics for {normalized_ticker} due to insufficient data.")
         raise HTTPException(
             status_code=422, 
-            detail="Unprocessable Entity: Insufficient historical market data."
+            detail="Unprocessable Entity: Insufficient historical market data to calculate technical indicators."
         )
         
-    logger.info(f"Successfully calculated 30d SMA for {normalized_ticker}: {sma_30}")
+    logger.info(f"Analytics computed for {normalized_ticker}. SMA30: {sma_30}, RSI14: {rsi_14}")
     
-    return {
-        "ticker_symbol": normalized_ticker,
-        "moving_average_30d": sma_30
-    }
+    # Return structured data conforming to our AnalyticsResponse Pydantic model
+    return schemas.AnalyticsResponse(
+        ticker_symbol=normalized_ticker,
+        moving_average_30d=sma_30,
+        rsi_14=rsi_14
+    )

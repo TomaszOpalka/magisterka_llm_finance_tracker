@@ -132,22 +132,35 @@ async def read_asset_by_ticker(ticker_symbol: str, db: AsyncSession = Depends(ge
         raise AssetNotFoundException(f"Asset with ticker '{ticker_symbol}' not found.")
     return asset
 
-@app.get("/assets/{ticker_symbol}/analytics", tags=["Analytics"])
-async def get_asset_analytics(ticker_symbol: str):
+@app.get("/assets/{ticker_symbol}/analytics", response_model=schemas.AnalyticsResponse, tags=["Analytics"])
+async def get_asset_analytics(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
     """
-    Calculates the 30-day Simple Moving Average (SMA).
-    Uses live historical data from external services.
+    Provides technical analysis (SMA & RSI).
+    Hardened: Verifies asset exists in DB before calling external services.
     """
-    history = await services.get_historical_data(ticker_symbol.upper(), days=30)
-    if not history:
-        raise AssetNotFoundException(f"Could not retrieve historical data for {ticker_symbol}")
+    # 1. Data Hardening: Ensure asset exists in our local DB (using asset_id check internally)
+    db_asset = await crud.get_asset_by_ticker(db, ticker_symbol)
+    if not db_asset:
+        raise AssetNotFoundException(
+            f"Asset {ticker_symbol} is not registered in our database. "
+            f"Please add it via POST /assets first."
+        )
 
-    sma_30 = analytics.calculate_moving_average(history)
-    return {
-        "ticker_symbol": ticker_symbol.upper(),
-        "moving_average_30d": sma_30,
-        "points_analyzed": len(history)
-    }
+    # 2. Fetch History (30 days to cover both SMA 30 and RSI 14)
+    history = await services.get_historical_data(ticker_symbol.upper(), days=30)
+    if len(history) < 15:
+        raise FinanceException(f"Insufficient history to calculate indicators for {ticker_symbol}")
+
+    # 3. Perform Calculations
+    sma = analytics.calculate_moving_average(history)
+    rsi = analytics.calculate_rsi(history, periods=14)
+
+    return schemas.AnalyticsResponse(
+        ticker_symbol=ticker_symbol.upper(),
+        moving_average_30d=sma,
+        rsi_14=rsi,
+        data_points=len(history)
+    )
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201, tags=["Assets"])
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):

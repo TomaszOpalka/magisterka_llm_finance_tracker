@@ -1,6 +1,6 @@
 """
 Schemas (Pydantic v2) for the Finance Track system.
-Includes strict validation and support for ORM models.
+Includes models for assets and analytics responses.
 """
 
 from datetime import datetime
@@ -36,9 +36,12 @@ class FinancialAsset(FinancialAssetBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AssetAnalytics(BaseModel):
-    """Response schema for the analytics endpoint."""
+class AnalyticsResponse(BaseModel):
+    """Response schema for the analytics endpoint, combining multiple indicators."""
     ticker_symbol: str = Field(..., description="Stock ticker symbol")
     moving_average_30d: float = Field(
-        ..., description="30-day simple moving average of the closing price"
+        ..., description="30-day simple moving average of closing price"
+    )
+    rsi_14: float = Field(
+        ..., description="14-day Relative Strength Index (0-100)"
     )
