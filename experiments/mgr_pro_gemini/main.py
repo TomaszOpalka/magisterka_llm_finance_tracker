@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional, AsyncGenerator
 
@@ -16,92 +17,77 @@ import schemas
 import exceptions
 import services
 import analytics
-import logging
 
+# Logging configuration
 logger = logging.getLogger("finance_track")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Manages the FastAPI application lifecycle. 
-    Ensures the 'financial_assets' table and its columns exist.
+    Handles database initialization and manual schema migrations.
     """
-    logger.info(f"Starting '{settings.APP_NAME}'. Database URL configured via environment.")
+    logger.info(f"Starting '{settings.APP_NAME}'. Database initialization in progress.")
     
     async with engine.begin() as conn:
-        # Step 1: Create tables if they do not exist
+        # Step 1: Ensure tables exist
         await conn.run_sync(models.Base.metadata.create_all)
         
-        # Step 2: Check columns asynchronously
+        # Step 2: Check for existing columns to handle migrations
         pragma_query = text("PRAGMA table_info(financial_assets);")
         result = await conn.execute(pragma_query)
         existing_columns = [row[1] for row in result.fetchall()]
         
-        # Step 3: Manual migration if 'last_updated' is missing
+        # Step 3: Migration - Add last_updated if it's a legacy database
         if "last_updated" not in existing_columns:
-            logger.warning("Missing 'last_updated' column. Executing ALTER TABLE migration...")
-            alter_query = text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;")
-            await conn.execute(alter_query)
-            logger.info("Migration successful. 'last_updated' column added.")
+            logger.warning("Migration: Adding missing 'last_updated' column.")
+            await conn.execute(text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;"))
             
-        # Strict architecture verification: ensure 'asset_id' is the primary key and 'id' does not exist
+        # Step 4: Strict Architecture Check (No 'id', only 'asset_id')
         if "id" in existing_columns and "asset_id" not in existing_columns:
-            logger.critical("FATAL: Architecture violation. 'id' found instead of 'asset_id'.")
-            raise Exception("Database architecture violation: Incorrect Primary Key.")
+            logger.critical("Architecture violation: 'id' found. System requires 'asset_id'.")
+            raise Exception("Database Primary Key Mismatch.")
             
-    logger.info("Database is ready. Primary key 'asset_id' verified.")
-    
+    logger.info("Database migration and verification complete.")
     yield
-    
-    logger.info("Shutting down application. Disposing database engine.")
     await engine.dispose()
+    logger.info("Application shutdown: Database engine disposed.")
 
-
-# Application Initialization
+# Application instance
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 
-
-# --- Global Exception Handlers ---
+# --- GLOBAL EXCEPTION HANDLERS ---
 
 @app.exception_handler(exceptions.FinanceException)
 async def finance_exception_handler(request: Request, exc: exceptions.FinanceException):
-    """Handles core business logic exceptions."""
-    logger.warning(f"Business Error [{exc.status_code}] at {request.url.path}: {exc.detail}")
+    logger.warning(f"Business Logic Error [{exc.status_code}] at {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-
 
 @app.exception_handler(exceptions.ExternalAPIException)
 async def external_api_exception_handler(request: Request, exc: exceptions.ExternalAPIException):
-    """Catches external API errors globally, returning a 502 Bad Gateway response."""
-    logger.error(f"External API Error at {request.url.path}: {exc.detail}")
+    logger.error(f"External Provider Error at {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handles standard HTTP exceptions gracefully."""
-    logger.error(f"HTTP Exception {exc.status_code} at {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-
-# --- Dependencies ---
+# --- DEPENDENCIES ---
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency injection for asynchronous database sessions."""
+    """Provides an asynchronous database session with automatic cleanup."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
 
-
-# --- Endpoints ---
+# --- ENDPOINTS ---
 
 @app.get("/status")
 async def healthcheck():
-    """Healthcheck endpoint to verify server status."""
-    return {"status": "ok", "database": "connected"}
-
+    """Service availability check."""
+    return {"status": "ok", "database": "connected", "app": settings.APP_NAME}
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
 async def read_assets(
@@ -111,114 +97,62 @@ async def read_assets(
     sort_by: str = Query("ticker_symbol"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retrieves a list of assets with pagination, filtering, and sorting."""
+    """Retrieves assets with pagination, filtering by price, and custom sorting."""
     try:
-        assets = await crud.get_assets(db=db, skip=skip, limit=limit, min_price=min_price, sort_by=sort_by)
+        assets = await crud.get_assets(db, skip, limit, min_price, sort_by)
     except Exception as e:
-        logger.error(f"Query error in read_assets: {e}")
+        logger.error(f"Database Query Error: {e}")
         raise exceptions.DatabaseConnectionException()
         
     if not assets:
-        raise exceptions.AssetNotFoundException(detail="No financial assets found matching the criteria.")
-
+        raise exceptions.AssetNotFoundException()
     return assets
 
-
 @app.get("/assets/{ticker_symbol}", response_model=schemas.FinancialAsset)
-async def read_asset_by_ticker(
-    ticker_symbol: str, 
-    db: AsyncSession = Depends(get_db)
-):
-    """Fetches a single asset's details by its ticker symbol."""
-    asset = await crud.get_asset_by_ticker(db, ticker_symbol=ticker_symbol.upper())
+async def read_asset_by_ticker(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
+    """Finds a specific asset by ticker symbol."""
+    asset = await crud.get_asset_by_ticker(db, ticker_symbol.upper())
     if not asset:
-        raise exceptions.AssetNotFoundException(detail=f"Asset with ticker '{ticker_symbol}' not found.")
+        raise exceptions.AssetNotFoundException(detail=f"Ticker {ticker_symbol} not found.")
     return asset
 
-
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
-async def add_asset(
-    asset: schemas.FinancialAssetCreate, 
-    db: AsyncSession = Depends(get_db)
-):
-    """Creates a new financial asset in the database."""
+async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
+    """Registers a new asset. Enforces unique ticker symbols."""
     try:
-        created_asset = await crud.create_asset(db, asset)
-        logger.info(f"Added new asset ({created_asset.ticker_symbol}). Asset ID: {created_asset.asset_id}")
-        return created_asset
+        return await crud.create_asset(db, asset)
     except IntegrityError:
         await db.rollback()
         raise HTTPException(status_code=400, detail="Ticker symbol already exists.")
     except Exception as e:
         await db.rollback()
-        logger.error(f"Critical save error: {e}")
+        logger.error(f"Persistence Error: {e}")
         raise exceptions.DatabaseConnectionException()
-
 
 @app.post("/assets/sync", status_code=200)
 async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
-    """Triggers a mass update of all stock prices. Designed to be fault-tolerant."""
+    """Triggers mass price synchronization with fault tolerance for individual tickers."""
     try:
-        logger.info("Starting mass price synchronization...")
-        sync_results = await crud.update_all_assets_prices(db)
-        
-        logger.info(
-            f"Synchronization complete. Updated: {sync_results['updated']}, "
-            f"Failed: {len(sync_results['failed'])}"
-        )
-        
-        return {
-            "detail": f"Successfully synchronized {sync_results['updated']} assets.",
-            "failed_tickers": sync_results['failed']
-        }
+        results = await crud.update_all_assets_prices(db)
+        return {"detail": f"Synced {results['updated']} assets.", "failed": results['failed']}
     except Exception as e:
-        logger.error(f"Critical error during synchronization batch: {e}")
-        raise exceptions.ExternalAPIException(detail="Mass synchronization failed due to external provider issues.")
+        logger.error(f"Mass Sync Failed: {e}")
+        raise exceptions.ExternalAPIException()
 
-
-@app.get("/assets/{ticker_symbol}/analytics", response_model=schemas.AnalyticsResponse, status_code=200)
-async def get_asset_analytics(
-    ticker_symbol: str, 
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Fetches historical data and calculates technical indicators (30-day SMA and 14-day RSI).
-    Includes a strict database check before triggering external API calls.
-    """
-    normalized_ticker = ticker_symbol.upper()
+@app.get("/assets/{ticker_symbol}/analytics", response_model=schemas.AnalyticsResponse)
+async def get_asset_analytics(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
+    """Performs technical analysis (SMA, RSI) for a registered asset."""
+    ticker = ticker_symbol.upper()
+    asset = await crud.get_asset_by_ticker(db, ticker)
     
-    # CRITICAL DEPENDENCY CHECK: Ensure the asset exists in our database first.
-    # This prevents abusing the external yfinance API with invalid or untracked tickers.
-    asset = await crud.get_asset_by_ticker(db, ticker_symbol=normalized_ticker)
     if not asset:
-        raise exceptions.AssetNotFoundException(
-            detail=f"Asset with ticker '{normalized_ticker}' not found in the tracking system."
-        )
+        raise exceptions.AssetNotFoundException()
         
-    logger.info(f"Fetching historical data for {normalized_ticker} to compute analytics...")
+    prices = await services.get_historical_data(ticker, days=60)
+    sma = analytics.calculate_moving_average(prices, 30)
+    rsi = analytics.calculate_rsi(prices, 14)
     
-    # Fetch 60 trading days of historical data.
-    # RSI calculations (especially Wilder's Smoothing) become much more accurate 
-    # when fed more historical data than just the raw minimum required.
-    prices = await services.get_historical_data(normalized_ticker, days=60)
-    
-    # Calculate indicators mathematically
-    sma_30 = analytics.calculate_moving_average(prices, period=30)
-    rsi_14 = analytics.calculate_rsi(prices, periods=14)
-    
-    # If both calculations fail (e.g., an IPO stock with only 5 days of history), reject the request
-    if sma_30 is None and rsi_14 is None:
-        logger.warning(f"Failed to calculate analytics for {normalized_ticker} due to insufficient data.")
-        raise HTTPException(
-            status_code=422, 
-            detail="Unprocessable Entity: Insufficient historical market data to calculate technical indicators."
-        )
+    if sma is None and rsi is None:
+        raise HTTPException(status_code=422, detail="Insufficient market data for analytics.")
         
-    logger.info(f"Analytics computed for {normalized_ticker}. SMA30: {sma_30}, RSI14: {rsi_14}")
-    
-    # Return structured data conforming to our AnalyticsResponse Pydantic model
-    return schemas.AnalyticsResponse(
-        ticker_symbol=normalized_ticker,
-        moving_average_30d=sma_30,
-        rsi_14=rsi_14
-    )
+    return schemas.AnalyticsResponse(ticker_symbol=ticker, moving_average_30d=sma, rsi_14=rsi)

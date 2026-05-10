@@ -59,3 +59,15 @@
 2026-05-06 01:06:37,200 - INFO - --- Finance Track System: Initializing ---
 2026-05-06 01:07:03,938 - WARNING - Business error: Asset creation failed. Ensure ticker is unique. at /assets
 2026-05-06 01:07:03,957 - WARNING - Price data unavailable for ticker: AAPL
+2026-05-11 00:16:06,903 - INFO - --- Finance Track System: Starting Up ---
+2026-05-11 00:16:06,923 - INFO - Database verification: Schema is current (Contract: asset_id).
+2026-05-11 00:17:04,581 - ERROR - Failure to create asset: (sqlite3.IntegrityError) UNIQUE constraint failed: financial_assets.ticker_symbol
+[SQL: INSERT INTO financial_assets (asset_id, ticker_symbol, last_price, market_cap, last_updated) VALUES (?, ?, ?, ?, ?)]
+[parameters: ('07c42cf4-d055-4dca-8b7e-c84949310b2f', 'AAPL', 0.0, 2500000000000, '2026-05-11 00:17:04.574542')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-05-11 00:17:04,582 - WARNING - Business Exception: Integrity error: Duplicate ticker or database constraint. | URL: /assets
+2026-05-11 00:17:04,588 - INFO - Executing global asset synchronization...
+2026-05-11 00:17:04,597 - WARNING - Price data unavailable for ticker: AAPL
+2026-05-11 00:17:33,983 - INFO - --- Finance Track System: Shutting Down ---
+2026-05-11 00:17:37,009 - INFO - --- Finance Track System: Starting Up ---
+2026-05-11 00:17:37,015 - INFO - Database verification: Schema is current (Contract: asset_id).
