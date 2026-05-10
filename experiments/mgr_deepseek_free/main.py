@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Local application imports
 from database import engine, async_session   # engine created with settings.DATABASE_URL
 from models import Base
-from schemas import FinancialAsset, FinancialAssetCreate, AssetAnalytics
+from schemas import FinancialAsset, FinancialAssetCreate, AssetAnalytics, AnalyticsResponse
 from crud import (
     get_assets,
     create_asset,
@@ -23,7 +23,10 @@ from crud import (
     get_asset_by_ticker,
 )
 from services import get_historical_data
-from analytics import calculate_moving_average
+from analytics import (
+    calculate_moving_average,
+    calculate_rsi,
+)
 from utils import logger
 from exceptions import (
     FinanceException,
@@ -244,16 +247,16 @@ async def sync_prices(
 
 @app.get(
     "/assets/{ticker_symbol}/analytics",
-    response_model=AssetAnalytics,
-    summary="Get 30-day moving average for a ticker",
+    response_model=AnalyticsResponse,
+    summary="Get 30-day moving average and 14-day RSI for a ticker",
 )
 async def asset_analytics(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns the 30-day simple moving average (SMA) of the closing price
-    for the given ticker, based on live market data.
+    Returns the 30-day simple moving average (SMA) and the 14-day
+    Relative Strength Index (RSI) for the given ticker, based on live market data.
     """
     # Verify the asset exists in our database
     asset = await get_asset_by_ticker(ticker_symbol)
@@ -263,19 +266,32 @@ async def asset_analytics(
             detail=f"Asset with ticker '{ticker_symbol}' not found (primary key: asset_id)."
         )
 
-    # Fetch 30 days of historical prices
+    # Fetch historical prices once (we need 30 days for SMA and 14+1 for RSI)
+    # 30 days covers both requirements, but we'll ensure we have enough.
     try:
         prices = await get_historical_data(ticker_symbol, days=30)
     except Exception as e:
         logger.error(f"Failed to fetch historical data for {ticker_symbol}: {e}")
         raise HTTPException(status_code=502, detail="External data service error.")
 
-    # Calculate the moving average
+    # Calculate both indicators
     try:
         sma = calculate_moving_average(prices, window=30)
     except AnalyticsException as e:
-        logger.warning(f"Analytics error for {ticker_symbol}: {e.detail}")
-        raise  # Will be caught by the finance_exception_handler
+        logger.warning(f"SMA calculation failed for {ticker_symbol}: {e.detail}")
+        raise  # finance_exception_handler will return 422
 
-    logger.info(f"Computed 30-day SMA for {ticker_symbol}: {sma}")
-    return AssetAnalytics(ticker_symbol=ticker_symbol, moving_average_30d=sma)
+    try:
+        rsi = calculate_rsi(prices, periods=14)
+    except AnalyticsException as e:
+        logger.warning(f"RSI calculation failed for {ticker_symbol}: {e.detail}")
+        raise  # same handler
+
+    logger.info(
+        f"Computed analytics for {ticker_symbol}: SMA={sma}, RSI={rsi}"
+    )
+    return AnalyticsResponse(
+        ticker_symbol=ticker_symbol,
+        moving_average_30d=sma,
+        rsi_14=rsi,
+    )

@@ -30,3 +30,13 @@ class FinancialAsset(FinancialAssetBase):
     asset_id: str
 
     model_config = ConfigDict(from_attributes=True)
+
+class AnalyticsResponse(BaseModel):
+    """
+    Structured response for financial analytics, including 
+    moving averages and momentum indicators.
+    """
+    ticker_symbol: str
+    moving_average_30d: float
+    rsi_14: Optional[float]
+    data_points: int

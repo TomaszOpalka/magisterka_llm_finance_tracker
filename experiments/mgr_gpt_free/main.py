@@ -16,7 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import async_session, engine
 from models import Base, FinancialAsset
-from schemas import FinancialAsset, FinancialAssetCreate
+from schemas import (
+    FinancialAsset,
+    FinancialAssetCreate,
+    AnalyticsResponse,
+)
 from crud import (
     get_assets,
     create_asset,
@@ -27,7 +31,10 @@ from services import (
     get_historical_data,
     StockServiceException,
 )
-from analytics import calculate_moving_average
+from analytics import (
+    calculate_moving_average,
+    calculate_rsi,
+)
 from exceptions import (
     FinanceException,
     AssetNotFoundException,
@@ -217,26 +224,56 @@ async def sync_prices(db: AsyncSession = Depends(get_db)):
     }
 
 
-@app.get("/assets/{ticker_symbol}/analytics")
+@app.get(
+    "/assets/{ticker_symbol}/analytics",
+    response_model=AnalyticsResponse,
+)
 async def get_asset_analytics(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Return 30-day moving average analytics.
+    Return analytical indicators for an asset.
     """
+    # Verify asset exists in local database
     asset = await get_asset_by_ticker(db, ticker_symbol)
 
     if not asset:
         raise AssetNotFoundException()
 
-    prices = await get_historical_data(ticker_symbol, days=30)
-    moving_avg = calculate_moving_average(prices)
+    try:
+        # Fetch 30 days of historical data
+        prices = await get_historical_data(
+            ticker_symbol,
+            days=30,
+        )
 
-    if moving_avg is None:
-        raise StockServiceException("Insufficient data for analytics")
+        if len(prices) < 15:
+            raise StockServiceException(
+                "Insufficient historical data"
+            )
 
-    return {
-        "ticker_symbol": ticker_symbol,
-        "moving_average_30d": moving_avg,
-    }
+        moving_average = calculate_moving_average(prices)
+        rsi = calculate_rsi(prices, periods=14)
+
+        if moving_average is None or rsi is None:
+            raise StockServiceException(
+                "Failed to calculate analytics"
+            )
+
+        return AnalyticsResponse(
+            ticker_symbol=ticker_symbol,
+            moving_average_30d=moving_average,
+            rsi_14=rsi,
+        )
+
+    except Exception as exc:
+        logger.error(
+            f"Analytics error for "
+            f"ticker={ticker_symbol} "
+            f"(asset_id={asset.asset_id}): {exc}"
+        )
+
+        raise StockServiceException(
+            "Analytics processing failed"
+        ) from exc
