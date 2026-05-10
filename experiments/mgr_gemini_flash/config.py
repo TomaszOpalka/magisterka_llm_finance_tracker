@@ -2,20 +2,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
-    Klasa konfiguracji aplikacji. 
-    Automatycznie mapuje zmienne środowiskowe na atrybuty klasy.
+    Application settings mapped to environment variables.
+    Defaults are used if variables are not provided in the shell or .env file.
     """
-    # Adres bazy danych (domyślnie SQLite asynchronicznie)
+    # DATABASE_URL should point to /app/data/finance.db in Docker
     DATABASE_URL: str = "sqlite+aiosqlite:///./finance.db"
-    
-    # Nazwa aplikacji
-    APP_NAME: str = "Finance Track"
-    
-    # Poziom logowania (DEBUG, INFO, WARNING, ERROR)
+    APP_NAME: str = "Finance Track API"
     LOG_LEVEL: str = "INFO"
 
-    # Konfiguracja wczytywania z pliku .env
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-# Instancja ustawień, którą będziemy importować w innych modułach
 settings = Settings()

@@ -154,3 +154,39 @@
 [2026-05-06 00:48:49] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
 [2026-05-06 00:48:49] INFO - finance_track - Finance Track started successfully.
 [2026-05-06 00:49:12] INFO - finance_track - Shutting down – database engine disposed.
+[2026-05-06 00:49:20] INFO - finance_track - Starting Finance Track – initializing database.
+[2026-05-06 00:49:21] INFO - finance_track - Table 'financial_assets' already exists – skipping creation.
+[2026-05-06 00:49:21] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
+[2026-05-06 00:49:21] INFO - finance_track - Finance Track started successfully.
+[2026-05-06 01:07:05] INFO - finance_track - Healthcheck requested.
+[2026-05-06 01:07:05] WARNING - finance_track - Conflict creating asset: Cannot create asset: 'AAPL' may already exist.
+[2026-05-06 01:07:05] ERROR - finance_track - HTTPException [409]: Cannot create asset: 'AAPL' may already exist. (path: /assets)
+[2026-05-06 01:07:06] INFO - finance_track - Fetched price for AAPL: 284.17999267578125
+[2026-05-06 01:07:06] INFO - finance_track - Batch update: 1 updated, 0 skipped, 0 failed.
+[2026-05-06 01:07:06] INFO - finance_track - Price sync completed: {'updated': 1, 'skipped': 0, 'failed': 0}
+[2026-05-06 01:07:06] INFO - finance_track - Fetched asset: AAPL (asset_id=9c5baa2a-ad6a-45a6-b4b7-3aa111e5e541)
+[2026-05-06 01:07:06] INFO - finance_track - Fetched 1 assets.
+[2026-05-06 01:07:06] INFO - finance_track - Fetched 0 assets.
+[2026-05-06 01:07:06] WARNING - finance_track - Asset with ticker 'NONEXISTENT_TICKER_123' not found.
+[2026-05-06 01:07:06] ERROR - finance_track - Business error [404]: Asset with ticker 'NONEXISTENT_TICKER_123' not found (primary key: asset_id). (path: /assets/NONEXISTENT_TICKER_123, resource key: asset_id)
+[2026-05-06 01:07:43] INFO - finance_track - Fetched 1 assets.
+[2026-05-07 21:59:19] INFO - finance_track - Shutting down – database engine disposed.
+[2026-05-07 21:59:47] INFO - finance_track - Starting Finance Track – initializing database.
+[2026-05-07 21:59:47] INFO - finance_track - Table 'financial_assets' already exists – skipping creation.
+[2026-05-07 21:59:47] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
+[2026-05-07 21:59:47] INFO - finance_track - Finance Track started successfully.
+[2026-05-07 22:10:01] INFO - finance_track - Shutting down – database engine disposed.
+[2026-05-07 22:10:10] INFO - finance_track - Starting Finance Track – initializing database.
+[2026-05-07 22:10:10] INFO - finance_track - Table 'financial_assets' already exists – skipping creation.
+[2026-05-07 22:10:10] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
+[2026-05-07 22:10:10] INFO - finance_track - Finance Track started successfully.
+[2026-05-07 22:26:31] INFO - finance_track - Shutting down – database engine disposed.
+[2026-05-07 22:43:39] INFO - finance_track - Starting Finance Track – initializing database.
+[2026-05-07 22:43:39] INFO - finance_track - Table 'financial_assets' already exists – skipping creation.
+[2026-05-07 22:43:39] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
+[2026-05-07 22:43:39] INFO - finance_track - Finance Track started successfully.
+[2026-05-07 22:43:39] INFO - finance_track - Shutting down – database engine disposed.
+[2026-05-07 22:43:51] INFO - finance_track - Starting Finance Track – initializing database.
+[2026-05-07 22:43:51] INFO - finance_track - Table 'financial_assets' already exists – skipping creation.
+[2026-05-07 22:43:51] INFO - finance_track - Column 'last_updated' already exists – migration skipped.
+[2026-05-07 22:43:51] INFO - finance_track - Finance Track started successfully.

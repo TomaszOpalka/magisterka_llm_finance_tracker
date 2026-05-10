@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 
 # Local module imports
+from config import settings
 from database import AsyncSessionLocal, engine
 import models
 import crud
@@ -15,8 +16,9 @@ import schemas
 import exceptions
 import services
 import analytics
-from utils import logger
+import logging
 
+logger = logging.getLogger("finance_track")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,7 +26,7 @@ async def lifespan(app: FastAPI):
     Manages the FastAPI application lifecycle. 
     Ensures the 'financial_assets' table and its columns exist.
     """
-    logger.info("Starting 'Finance Track' system. Verifying database structure.")
+    logger.info(f"Starting '{settings.APP_NAME}'. Database URL configured via environment.")
     
     async with engine.begin() as conn:
         # Step 1: Create tables if they do not exist
@@ -42,6 +44,11 @@ async def lifespan(app: FastAPI):
             await conn.execute(alter_query)
             logger.info("Migration successful. 'last_updated' column added.")
             
+        # Strict architecture verification: ensure 'asset_id' is the primary key and 'id' does not exist
+        if "id" in existing_columns and "asset_id" not in existing_columns:
+            logger.critical("FATAL: Architecture violation. 'id' found instead of 'asset_id'.")
+            raise Exception("Database architecture violation: Incorrect Primary Key.")
+            
     logger.info("Database is ready. Primary key 'asset_id' verified.")
     
     yield
@@ -51,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 
 # Application Initialization
-app = FastAPI(title="Finance Track API", lifespan=lifespan)
+app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 
 
 # --- Global Exception Handlers ---
@@ -65,15 +72,9 @@ async def finance_exception_handler(request: Request, exc: exceptions.FinanceExc
 
 @app.exception_handler(exceptions.ExternalAPIException)
 async def external_api_exception_handler(request: Request, exc: exceptions.ExternalAPIException):
-    """
-    Catches specific external API errors globally, preventing the application
-    from crashing and returning a clean 502 Bad Gateway response.
-    """
+    """Catches external API errors globally, returning a 502 Bad Gateway response."""
     logger.error(f"External API Error at {request.url.path}: {exc.detail}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.exception_handler(HTTPException)
@@ -156,9 +157,7 @@ async def add_asset(
 
 @app.post("/assets/sync", status_code=200)
 async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
-    """
-    Triggers a mass update of all stock prices. Designed to be fault-tolerant.
-    """
+    """Triggers a mass update of all stock prices. Designed to be fault-tolerant."""
     try:
         logger.info("Starting mass price synchronization...")
         sync_results = await crud.update_all_assets_prices(db)
@@ -182,32 +181,25 @@ async def get_asset_analytics(
     ticker_symbol: str, 
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Fetches historical data and calculates the 30-day simple moving average (SMA)
-    for a specific asset.
-    """
+    """Fetches historical data and calculates the 30-day simple moving average (SMA)."""
     normalized_ticker = ticker_symbol.upper()
     
-    # Verify the asset exists in our local database first
     asset = await crud.get_asset_by_ticker(db, ticker_symbol=normalized_ticker)
     if not asset:
         raise exceptions.AssetNotFoundException(
             detail=f"Asset with ticker '{normalized_ticker}' not found in the tracking system."
         )
         
-    # Fetch 30 trading days of historical data
     logger.info(f"Fetching historical data for {normalized_ticker}...")
     prices = await services.get_historical_data(normalized_ticker, days=30)
     
-    # Calculate the 30-day Simple Moving Average
     sma_30 = analytics.calculate_moving_average(prices, period=30)
     
-    # Handle insufficient data gracefully
     if sma_30 is None:
         logger.warning(f"Failed to calculate SMA for {normalized_ticker} due to insufficient data.")
         raise HTTPException(
             status_code=422, 
-            detail="Unprocessable Entity: Insufficient historical market data to calculate the 30-day moving average."
+            detail="Unprocessable Entity: Insufficient historical market data."
         )
         
     logger.info(f"Successfully calculated 30d SMA for {normalized_ticker}: {sma_30}")

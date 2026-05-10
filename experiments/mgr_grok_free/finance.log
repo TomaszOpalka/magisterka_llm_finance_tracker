@@ -90,3 +90,15 @@ FROM financial_assets]
 [parameters: ('AAPL', 'AAPL', 0.0, 2500000000000)]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 2026-05-06 00:30:43 | ERROR | Błąd biznesowy [500]: Nie udało się dodać aktywa | Ścieżka: /assets
+2026-05-06 01:07:07 | INFO | Sprawdzono status systemu
+2026-05-06 01:07:07 | ERROR | Błąd podczas dodawania aktywa AAPL: (sqlite3.OperationalError) no such column: last_updated
+[SQL: INSERT INTO financial_assets (asset_id, ticker_symbol, last_price, market_cap) VALUES (?, ?, ?, ?) RETURNING last_updated]
+[parameters: ('AAPL', 'AAPL', 0.0, 2500000000000)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-06 01:07:07 | ERROR | Błąd biznesowy [500]: Nie udało się dodać aktywa | Ścieżka: /assets
+2026-05-06 01:07:44 | ERROR | Błąd podczas pobierania aktywów: (sqlite3.OperationalError) no such column: financial_assets.last_updated
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.last_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-06 01:07:44 | ERROR | Błąd biznesowy [500]: Nie udało się pobrać listy aktywów | Ścieżka: /assets
+2026-05-07 22:26:37 | INFO | Zamykanie systemu Finance Track
