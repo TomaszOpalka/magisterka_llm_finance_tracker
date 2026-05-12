@@ -1,8 +1,8 @@
 import crud
+import models
 import schemas
 import services
 import analytics
-import models
 from database import engine, async_session, init_db
 from utils import logger
 from exceptions import FinanceException, AssetNotFoundException
@@ -18,43 +18,36 @@ from typing import List, Optional, AsyncGenerator
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Manages the application lifecycle.
-    Initializes the database and performs schema migrations for asset_id and last_updated.
+    Application lifecycle management.
+    Initializes the database and ensures the schema is synchronized.
     """
-    logger.info("--- Finance Track System: Starting Up ---")
-    
-    # 1. Initialize tables
+    logger.info("Starting Finance Track API services.")
     await init_db()
     
-    # 2. Resilient migration for SQLite
     async with engine.begin() as conn:
         try:
+            # Verify existing columns for SQLite compatibility
             result = await conn.execute(text("PRAGMA table_info(financial_assets)"))
             columns = [row[1] for row in result.fetchall()]
             
             if "last_updated" not in columns:
-                logger.info("Migration: Adding 'last_updated' column to 'financial_assets'.")
+                logger.info("Schema Update: Adding last_updated column.")
                 await conn.execute(text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME"))
-                logger.info("Migration successful.")
-            else:
-                logger.info("Database verification: Schema is current (Contract: asset_id).")
+            
+            logger.info("Database schema verification successful (PK: asset_id).")
         except Exception as e:
-            logger.error(f"Startup maintenance error: {str(e)}")
+            logger.error(f"Schema synchronization failed: {str(e)}")
 
     yield
-    logger.info("--- Finance Track System: Shutting Down ---")
-
-# --- App Initialization ---
+    logger.info("Shutting down Finance Track API services.")
 
 app = FastAPI(
     title="Finance Track API",
-    version="3.3.1",
-    description="Asynchronous Financial Tracker with SMA and RSI Analytics.",
+    version="3.4.0",
     lifespan=lifespan
 )
 
-# --- CORS Configuration ---
-
+# CORS Configuration for cross-origin research tools
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -63,92 +56,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Global Exception Handlers ---
-
+# Global Exception Handlers
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
-    """Handles custom business exceptions and logs warnings."""
-    logger.warning(f"Business Exception: {exc.message} | URL: {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error_type": exc.__class__.__name__,
-            "detail": exc.message,
-            "path": str(request.url.path),
-            "pk_contract": "asset_id"
-        }
+        content={"error": exc.__class__.__name__, "detail": exc.message}
     )
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    """Global safety net for unhandled internal server errors."""
-    logger.error(f"Critical System Error: {str(exc)} | Path: {request.url.path}")
+    logger.error(f"Unhandled server error: {str(exc)}")
     return JSONResponse(
         status_code=500,
-        content={"detail": "An internal server error occurred. Verify logs in data/finance.log."}
+        content={"detail": "An internal server error occurred."}
     )
 
-# --- Dependency Injection ---
-
+# Dependency Injection
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Provides a scoped asynchronous database session per request."""
     async with async_session() as session:
         yield session
 
-# --- API Endpoints ---
-
+# API Endpoints
 @app.get("/status", tags=["System"])
-async def health_check():
-    """System health check endpoint."""
-    return {
-        "status": "online",
-        "database": "connected",
-        "pk_convention": "asset_id",
-        "port_mapping": "8002:8002"
-    }
+async def get_status():
+    """Returns the operational status of the API."""
+    return {"status": "online", "pk_contract": "asset_id"}
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset], tags=["Assets"])
 async def read_assets(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    min_price: Optional[float] = Query(None, ge=0),
-    sort_by: str = Query(
-        "ticker_symbol", 
-        pattern="^(ticker_symbol|last_price|market_cap|asset_id)$"
-    ),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retrieves all assets from the database with pagination and sorting."""
-    return await crud.get_assets(db, skip, limit, min_price, sort_by)
+    """Retrieves a list of financial assets from the local database."""
+    assets = await crud.get_assets(db, skip=skip, limit=limit)
+    return assets
 
 @app.get("/assets/{ticker_symbol}", response_model=schemas.FinancialAsset, tags=["Assets"])
-async def read_asset_by_ticker(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
-    """Fetches details for a single asset from the local DB."""
-    asset = await crud.get_asset_by_ticker(db, ticker_symbol)
+async def read_asset(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
+    """Retrieves a specific asset by its ticker symbol."""
+    asset = await crud.get_asset_by_ticker(db, ticker_symbol.upper())
     if not asset:
-        raise AssetNotFoundException(f"Asset '{ticker_symbol}' not found in registry.")
+        raise AssetNotFoundException(f"Asset {ticker_symbol} not found.")
     return asset
 
 @app.get("/assets/{ticker_symbol}/analytics", response_model=schemas.AnalyticsResponse, tags=["Analytics"])
-async def get_asset_analytics(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
+async def get_analytics(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
     """
-    Performs advanced technical analysis (SMA and RSI).
-    Requires the asset to be registered in the DB first (Data Hardening).
+    Calculates technical indicators for a registered asset.
+    Requires the asset to exist in the database for research integrity.
     """
-    # 1. Verify asset existence in local DB
     db_asset = await crud.get_asset_by_ticker(db, ticker_symbol.upper())
     if not db_asset:
-        raise AssetNotFoundException(
-            f"Asset {ticker_symbol} must be added to the database via POST /assets "
-            f"before running analytics."
-        )
+        raise AssetNotFoundException(f"Analytics failed: {ticker_symbol} is not registered.")
 
-    # 2. Fetch historical market data (30 days)
     history = await services.get_historical_data(ticker_symbol.upper(), days=30)
     if len(history) < 15:
-        raise FinanceException(f"Insufficient history (need 15+ points) for {ticker_symbol}.")
+        raise FinanceException("Insufficient historical data for RSI calculation.")
 
-    # 3. Calculate indicators
     sma = analytics.calculate_moving_average(history)
     rsi = analytics.calculate_rsi(history, periods=14)
 
@@ -160,30 +126,16 @@ async def get_asset_analytics(ticker_symbol: str, db: AsyncSession = Depends(get
     )
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201, tags=["Assets"])
-async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
-    """Registers a new asset. Ticker symbols are normalized to uppercase."""
+async def create_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
+    """Registers a new financial asset with a unique asset_id."""
     try:
         return await crud.create_asset(db, asset)
     except Exception as e:
-        logger.error(f"Failure to create asset: {str(e)}")
-        raise FinanceException("Integrity error: Duplicate ticker or database constraint.")
+        logger.error(f"Asset registration error: {str(e)}")
+        raise FinanceException("Could not create asset. Ensure ticker uniqueness.")
 
 @app.post("/assets/sync", tags=["Maintenance"])
-async def sync_market_data(db: AsyncSession = Depends(get_db)):
-    """Mass-syncs current prices for all stored assets."""
-    logger.info("Executing global asset synchronization...")
-    try:
-        updated_count = await crud.update_all_assets_prices(db)
-        return {
-            "status": "success",
-            "updated_records": updated_count,
-            "pk_contract": "asset_id_preserved"
-        }
-    except Exception as e:
-        logger.error(f"Sync failed: {str(e)}")
-        raise FinanceException("Internal sync process failed.", status_code=500)
-
-if __name__ == "__main__":
-    import uvicorn
-    # Enforcing port 8002 to align with Docker mapping 8002:8002
-    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)
+async def sync_assets(db: AsyncSession = Depends(get_db)):
+    """Synchronizes local prices with live market data."""
+    updated = await crud.update_all_assets_prices(db)
+    return {"status": "success", "updated_count": updated}

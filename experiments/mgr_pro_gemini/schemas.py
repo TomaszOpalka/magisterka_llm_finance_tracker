@@ -1,41 +1,35 @@
-from datetime import datetime
-from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
-
+from typing import Optional
+from datetime import datetime
 
 class FinancialAssetBase(BaseModel):
-    """
-    Podstawowy schemat danych dla instrumentu finansowego.
-    Wzbogacony o rygorystyczną walidację biznesową.
-    """
-    # Walidacja: od 1 do 5 wielkich liter alfabetu (np. AAPL, TSLA, O)
-    ticker_symbol: str = Field(..., pattern=r'^[A-Z]{1,5}$')
-    
-    # Walidacja: cena nie może być ujemna (większa lub równa 0.0)
-    last_price: float = Field(..., ge=0.0)
-    
-    market_cap: int
-    
-    # Nowe pole: data i czas, domyślnie None, aby pozwolić bazie danych wygenerować czas
-    last_updated: Optional[datetime] = None
-
+    """Base schema containing common financial asset attributes."""
+    ticker_symbol: str = Field(..., description="The unique stock ticker symbol")
+    last_price: Optional[float] = Field(None, ge=0.0, description="Latest traded price")
+    market_cap: Optional[float] = Field(None, ge=0.0, description="Total market capitalization")
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """Schemat używany podczas tworzenia aktywa."""
+    """Schema used for creating a new financial asset."""
     pass
 
-
 class FinancialAsset(FinancialAssetBase):
-    """Pełny schemat reprezentujący instrument finansowy zwracany z API."""
-    asset_id: str
+    """
+    Complete Financial Asset schema representing database records.
+    Configured for ORM mode to seamlessly translate SQLAlchemy models.
+    """
+    asset_id: str = Field(..., description="Primary key identifier")
+    last_updated: Optional[datetime] = Field(None, description="Timestamp of last data sync")
 
     model_config = ConfigDict(from_attributes=True)
 
-class AnalyticsResponse(BaseModel):
+class AssetAnalytics(BaseModel):
+    """Base schema for calculated technical indicators."""
+    moving_average_30d: Optional[float] = Field(None, description="30-day Simple Moving Average")
+    rsi_14: Optional[float] = Field(None, description="14-period Relative Strength Index")
+
+class AnalyticsResponse(AssetAnalytics):
     """
-    Schema for structuring the output of the analytics endpoint.
-    All fields use strict snake_case naming conventions.
+    Response schema for the analytics endpoint.
+    Inherits technical indicators from AssetAnalytics and adds the ticker symbol.
     """
-    ticker_symbol: str
-    moving_average_30d: Optional[float] = None
-    rsi_14: Optional[float] = None
+    ticker_symbol: str = Field(..., description="The specific stock ticker symbol")

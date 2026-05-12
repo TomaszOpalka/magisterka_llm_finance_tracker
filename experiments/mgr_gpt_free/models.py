@@ -1,32 +1,37 @@
 """
-Definicje modeli ORM dla systemu Finance Track.
+SQLAlchemy models for Finance Track.
 """
 
 from datetime import datetime
+from uuid import uuid4
 
-from sqlalchemy import BigInteger, DateTime, Float, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.sql import func
+from sqlalchemy import BigInteger
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import String
+from sqlalchemy import func
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 
 
 class Base(DeclarativeBase):
     """
-    Klasa bazowa dla modeli ORM.
+    Base declarative class.
     """
-    pass
 
 
 class FinancialAsset(Base):
     """
-    Model reprezentujący aktywo finansowe.
+    Financial asset database model.
     """
 
     __tablename__ = "financial_assets"
 
-    # Klucz główny – zgodnie z kontraktem: asset_id (NIE zmieniamy!)
     asset_id: Mapped[str] = mapped_column(
         String,
         primary_key=True,
+        default=lambda: str(uuid4()),
     )
 
     ticker_symbol: Mapped[str] = mapped_column(
@@ -39,16 +44,17 @@ class FinancialAsset(Base):
     last_price: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+        default=0.0,
     )
 
     market_cap: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
+        default=0,
     )
 
-    # Data ostatniej aktualizacji (domyślnie ustawiana przez bazę)
     last_updated: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         server_default=func.now(),
         nullable=True,
     )

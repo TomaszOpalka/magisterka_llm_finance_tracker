@@ -1,7 +1,6 @@
 """
 Main FastAPI application for Finance Track.
-Manages database lifecycle, REST endpoints, exception handling, and logging.
-Includes error-resilient price sync, analytics, and a healthcheck.
+Handles database lifecycle, REST endpoints, exception management, and logging.
 """
 
 from contextlib import asynccontextmanager
@@ -12,10 +11,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Local application imports
-from database import engine, async_session   # engine created with settings.DATABASE_URL
+# Local imports
+from database import engine, async_session
 from models import Base
-from schemas import FinancialAsset, FinancialAssetCreate, AssetAnalytics, AnalyticsResponse
+from schemas import (
+    FinancialAsset,
+    FinancialAssetCreate,
+    AnalyticsResponse,
+)
 from crud import (
     get_assets,
     create_asset,
@@ -23,10 +26,7 @@ from crud import (
     get_asset_by_ticker,
 )
 from services import get_historical_data
-from analytics import (
-    calculate_moving_average,
-    calculate_rsi,
-)
+from analytics import calculate_moving_average, calculate_rsi
 from utils import logger
 from exceptions import (
     FinanceException,
@@ -35,18 +35,17 @@ from exceptions import (
 )
 
 
-# ---------- LIFESPAN (startup/shutdown) ----------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application lifespan: creates database tables on startup,
-    performs light migration (adds last_updated column if missing),
-    and disposes of the engine on shutdown.
+    Starts up the application, creates tables if needed,
+    executes a light migration for the ´last_updated´ column,
+    and disposes of the database engine on shutdown.
     """
     logger.info("Starting Finance Track – initializing database.")
 
     async with engine.begin() as conn:
-        # 1. Create tables if they don't exist
+        # Ensure the financial_assets table exists
         def check_tables_exist(sync_conn):
             inspector = inspect(sync_conn)
             return "financial_assets" in inspector.get_table_names()
@@ -58,7 +57,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("Table 'financial_assets' already exists – skipping creation.")
 
-        # 2. Migration: add last_updated column if it's missing
+        # Migration: add last_updated column if it is missing
         def column_exists(sync_conn, table_name, column_name):
             inspector = inspect(sync_conn)
             cols = [c["name"] for c in inspector.get_columns(table_name)]
@@ -83,7 +82,6 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down – database engine disposed.")
 
 
-# ---------- FASTAPI APP ----------
 app = FastAPI(
     title="Finance Track",
     version="0.1.0",
@@ -95,7 +93,7 @@ app = FastAPI(
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
-    """Handles all custom FinanceException subclasses."""
+    """Catches all custom FinanceException subclasses and returns a JSON error."""
     logger.error(
         f"Business error [{exc.status_code}]: {exc.detail} "
         f"(path: {request.url.path}, resource key: asset_id)"
@@ -115,7 +113,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    """Catches any unhandled exception and returns a 500 response."""
+    """Unhandled exceptions are logged and returned as 500."""
     logger.critical(
         f"Unhandled exception: {exc} (path: {request.url.path})", exc_info=True
     )
@@ -128,7 +126,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # ---------- DEPENDENCIES ----------
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency that provides an async database session."""
+    """Provides an async database session as a FastAPI dependency."""
     async with async_session() as session:
         yield session
 
@@ -149,7 +147,7 @@ async def healthcheck():
 @app.get(
     "/assets",
     response_model=List[FinancialAsset],
-    summary="List assets with filtering, sorting, and pagination",
+    summary="List financial assets with filtering, pagination, and sorting",
 )
 async def read_assets(
     skip: int = Query(0, ge=0, description="Records to skip"),
@@ -159,13 +157,13 @@ async def read_assets(
     ),
     sort_by: Optional[str] = Query(
         "ticker_symbol",
-        description="Sort column (asset_id, ticker_symbol, last_price, market_cap, last_updated)",
+        description="Column to sort by (asset_id, ticker_symbol, last_price, market_cap, last_updated)",
     ),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns a paginated, filtered, and sorted list of assets.
-    An empty array is returned when no records match.
+    Returns a filtered, sorted, and paginated list of financial assets.
+    If no records match the criteria, an empty list is returned.
     """
     try:
         assets = await get_assets(
@@ -189,7 +187,7 @@ async def read_asset_by_ticker(
 ):
     """
     Retrieves the details of a single asset using its ticker symbol.
-    Returns 404 if the asset is not found.
+    Returns 404 if the asset does not exist.
     """
     asset = await get_asset_by_ticker(ticker_symbol)
     if asset is None:
@@ -211,7 +209,10 @@ async def create_new_asset(
     asset_data: FinancialAssetCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Creates a new asset. The primary key (asset_id) is generated automatically."""
+    """
+    Creates a new financial asset.
+    The primary key (asset_id) is automatically generated as a UUID.
+    """
     try:
         new_asset = await create_asset(asset_data)
         logger.info(f"Created asset: {new_asset.asset_id} ({new_asset.ticker_symbol})")
@@ -227,14 +228,14 @@ async def create_new_asset(
 @app.post(
     "/assets/sync",
     response_model=Dict[str, int],
-    summary="Sync all asset prices with live market data",
+    summary="Synchronize all asset prices with live market data",
 )
 async def sync_prices(
     db: AsyncSession = Depends(get_db),
 ):
     """
     Triggers a bulk update of last_price and last_updated for every asset.
-    The process is resilient: individual failures do not stop the batch.
+    The process is resilient: a failure for one ticker does not stop the batch.
     """
     try:
         result = await update_all_assets_prices(db)
@@ -248,48 +249,46 @@ async def sync_prices(
 @app.get(
     "/assets/{ticker_symbol}/analytics",
     response_model=AnalyticsResponse,
-    summary="Get 30-day moving average and 14-day RSI for a ticker",
+    summary="Retrieve 30-day SMA and 14-day RSI for a ticker",
 )
 async def asset_analytics(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns the 30-day simple moving average (SMA) and the 14-day
-    Relative Strength Index (RSI) for the given ticker, based on live market data.
+    Retrieves historical prices for the given ticker, then calculates
+    the 30-day simple moving average and the 14-day Relative Strength Index.
     """
     # Verify the asset exists in our database
     asset = await get_asset_by_ticker(ticker_symbol)
     if asset is None:
-        logger.warning(f"Ticker '{ticker_symbol}' not found in database.")
+        logger.warning(f"Asset with ticker '{ticker_symbol}' not found.")
         raise AssetNotFoundException(
             detail=f"Asset with ticker '{ticker_symbol}' not found (primary key: asset_id)."
         )
 
-    # Fetch historical prices once (we need 30 days for SMA and 14+1 for RSI)
-    # 30 days covers both requirements, but we'll ensure we have enough.
+    # Fetch historical closing prices
     try:
         prices = await get_historical_data(ticker_symbol, days=30)
     except Exception as e:
         logger.error(f"Failed to fetch historical data for {ticker_symbol}: {e}")
         raise HTTPException(status_code=502, detail="External data service error.")
 
-    # Calculate both indicators
+    # Calculate SMA
     try:
         sma = calculate_moving_average(prices, window=30)
     except AnalyticsException as e:
-        logger.warning(f"SMA calculation failed for {ticker_symbol}: {e.detail}")
-        raise  # finance_exception_handler will return 422
+        logger.warning(f"SMA calculation error for {ticker_symbol}: {e.detail}")
+        raise
 
+    # Calculate RSI
     try:
         rsi = calculate_rsi(prices, periods=14)
     except AnalyticsException as e:
-        logger.warning(f"RSI calculation failed for {ticker_symbol}: {e.detail}")
-        raise  # same handler
+        logger.warning(f"RSI calculation error for {ticker_symbol}: {e.detail}")
+        raise
 
-    logger.info(
-        f"Computed analytics for {ticker_symbol}: SMA={sma}, RSI={rsi}"
-    )
+    logger.info(f"Analytics for {ticker_symbol}: SMA={sma}, RSI={rsi}")
     return AnalyticsResponse(
         ticker_symbol=ticker_symbol,
         moving_average_30d=sma,
