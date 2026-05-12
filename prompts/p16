@@ -1,0 +1,11 @@
+Prompt 16: Unit Testing Framework (The Safety Net)Treść do wklejenia modelowi:
+
+"We are approaching the final stage of Phase II. Before we start the major refactor (PR #67), we
+ must ensure the current system is stable and verifiable. Everything in the code must be in English.
+  Explain your logic in Polish under the code block.TASK: Implementation of Automated
+   Unit Teststests/ (New Directory): Create a testing suite using pytest and pytest-asyncio.tests/conftest.py:Set up an isolated,
+    asynchronous in-memory SQLite database (sqlite+aiosqlite:///:memory:) specifically for testing.Define a fixture for the AsyncSession
+     and the httpx.AsyncClient to test the API endpoints without affecting the production database.tests/test_logic.py:Write tests for
+      the calculate_moving_average and calculate_rsi functions in analytics.py.
+      Write an integration test for the POST /assets and GET /assets/{ticker_symbol} endpoints.STRICT ADHERENCE REQUIRED:NO CODE LAZINESS: You must provide complete, copy-pasteable files. Do not use placeholders like '# ... rest of code'.PRIMARY KEY: You MUST use asset_id (String). Do not use 'id'.  ASYNC: Ensure all tests are properly decorated with 
+      @pytest.mark.asyncio.STANDARDS: Use SQLAlchemy 2.0 and Pydantic v2 conventions."

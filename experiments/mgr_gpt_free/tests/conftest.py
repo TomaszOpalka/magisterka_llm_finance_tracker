@@ -1,8 +1,9 @@
-"""
-Pytest configuration and async fixtures for Finance Track.
-"""
-
+import sys
+import os
 from collections.abc import AsyncGenerator
+
+# Add the experiment directory to sys.path to allow local imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -12,8 +13,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from experiments.mgr_gpt_free.main import app, get_db
-from experiments.mgr_gpt_free.models import Base
+from main import app, get_db
+from models import Base
 
 # In-memory SQLite database for isolated testing
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

@@ -5,7 +5,7 @@ Unit and integration tests for Finance Track.
 import pytest
 from httpx import AsyncClient
 
-from analytics import (
+from experiments.mgr_gpt_free.analytics import (
     calculate_moving_average,
     calculate_rsi,
 )
