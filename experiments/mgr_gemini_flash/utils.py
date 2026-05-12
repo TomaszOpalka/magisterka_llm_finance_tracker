@@ -3,7 +3,7 @@ import sys
 import os
 
 # Define log path relative to the data volume
-LOG_FILE_PATH = os.getenv("LOG_FILE", "/app/data/finance.log")
+LOG_FILE_PATH = os.getenv("LOG_FILE", "finance.log")
 
 logger = logging.getLogger("finance_track")
 logger.setLevel(logging.INFO)

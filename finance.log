@@ -1,0 +1,3 @@
+2026-05-12 23:35:04,606 - WARNING - Business Exception: Asset 'NONEXISTENT' not found in registry. | URL: /assets/NONEXISTENT
+2026-05-12 23:40:46,571 - WARNING - Business Exception: Asset 'NONEXISTENT' not found in registry. | URL: /assets/NONEXISTENT
+2026-05-12 23:41:08,385 - WARNING - Business Exception: Asset 'NONEXISTENT' not found in registry. | URL: /assets/NONEXISTENT

@@ -10,9 +10,17 @@ async def get_stock_price(ticker: str) -> Optional[float]:
     """
     try:
         stock = await asyncio.to_thread(yf.Ticker, ticker)
-        # Using fast_info to minimize data transfer and latency
-        data = await asyncio.to_thread(stock.fast_info.get, 'last_price')
         
+        # 1. Try fast_info first
+        data = await asyncio.to_thread(lambda: stock.fast_info.get('last_price'))
+        
+        # 2. Fallback to history if fast_info is unavailable
+        if data is None:
+            logger.info(f"FastInfo failed for {ticker}, trying history fallback.")
+            hist = await asyncio.to_thread(stock.history, period="1d")
+            if not hist.empty:
+                data = hist['Close'].iloc[-1]
+
         if data is None:
             logger.warning(f"Price data unavailable for ticker: {ticker}")
             return None
