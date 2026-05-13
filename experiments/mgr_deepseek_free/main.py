@@ -1,6 +1,7 @@
 """
 Main FastAPI application for Finance Track.
-Handles database lifecycle, REST endpoints, exception management, and logging.
+Manages database lifecycle, REST endpoints, exception handling, and logging.
+All API endpoints use camelCase JSON keys because of the Pydantic models.
 """
 
 from contextlib import asynccontextmanager
@@ -11,7 +12,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Local imports
 from database import engine, async_session
 from models import Base
 from schemas import (
@@ -38,14 +38,14 @@ from exceptions import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Starts up the application, creates tables if needed,
-    executes a light migration for the ´last_updated´ column,
-    and disposes of the database engine on shutdown.
+    Application lifespan: creates database tables on startup,
+    performs light migration (adds last_updated column if missing),
+    and disposes of the engine on shutdown.
     """
     logger.info("Starting Finance Track – initializing database.")
 
     async with engine.begin() as conn:
-        # Ensure the financial_assets table exists
+        # Ensure tables exist
         def check_tables_exist(sync_conn):
             inspector = inspect(sync_conn)
             return "financial_assets" in inspector.get_table_names()
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("Table 'financial_assets' already exists – skipping creation.")
 
-        # Migration: add last_updated column if it is missing
+        # Migration: add last_updated column if missing
         def column_exists(sync_conn, table_name, column_name):
             inspector = inspect(sync_conn)
             cols = [c["name"] for c in inspector.get_columns(table_name)]
@@ -93,7 +93,7 @@ app = FastAPI(
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(request: Request, exc: FinanceException):
-    """Catches all custom FinanceException subclasses and returns a JSON error."""
+    """Handles all custom FinanceException subclasses."""
     logger.error(
         f"Business error [{exc.status_code}]: {exc.detail} "
         f"(path: {request.url.path}, resource key: asset_id)"
@@ -113,7 +113,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    """Unhandled exceptions are logged and returned as 500."""
+    """Catches any unhandled exception and returns a 500 response."""
     logger.critical(
         f"Unhandled exception: {exc} (path: {request.url.path})", exc_info=True
     )
@@ -126,7 +126,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # ---------- DEPENDENCIES ----------
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Provides an async database session as a FastAPI dependency."""
+    """Dependency that provides an async database session."""
     async with async_session() as session:
         yield session
 
@@ -147,7 +147,7 @@ async def healthcheck():
 @app.get(
     "/assets",
     response_model=List[FinancialAsset],
-    summary="List financial assets with filtering, pagination, and sorting",
+    summary="List assets with filtering, sorting, and pagination",
 )
 async def read_assets(
     skip: int = Query(0, ge=0, description="Records to skip"),
@@ -162,8 +162,8 @@ async def read_assets(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns a filtered, sorted, and paginated list of financial assets.
-    If no records match the criteria, an empty list is returned.
+    Returns a paginated, filtered, and sorted list of assets.
+    All keys in the response are camelCase.
     """
     try:
         assets = await get_assets(
@@ -186,8 +186,8 @@ async def read_asset_by_ticker(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieves the details of a single asset using its ticker symbol.
-    Returns 404 if the asset does not exist.
+    Retrieves the details of a single asset.
+    All keys in the response are camelCase.
     """
     asset = await get_asset_by_ticker(ticker_symbol)
     if asset is None:
@@ -211,7 +211,8 @@ async def create_new_asset(
 ):
     """
     Creates a new financial asset.
-    The primary key (asset_id) is automatically generated as a UUID.
+    The request body must use camelCase keys (e.g., tickerSymbol).
+    The response also uses camelCase.
     """
     try:
         new_asset = await create_asset(asset_data)
@@ -228,7 +229,7 @@ async def create_new_asset(
 @app.post(
     "/assets/sync",
     response_model=Dict[str, int],
-    summary="Synchronize all asset prices with live market data",
+    summary="Sync all asset prices with live market data",
 )
 async def sync_prices(
     db: AsyncSession = Depends(get_db),
@@ -249,15 +250,15 @@ async def sync_prices(
 @app.get(
     "/assets/{ticker_symbol}/analytics",
     response_model=AnalyticsResponse,
-    summary="Retrieve 30-day SMA and 14-day RSI for a ticker",
+    summary="Get 30‑day SMA and 14‑day RSI for a ticker",
 )
 async def asset_analytics(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieves historical prices for the given ticker, then calculates
-    the 30-day simple moving average and the 14-day Relative Strength Index.
+    Returns the 30‑day simple moving average and the 14‑day
+    Relative Strength Index, using camelCase keys.
     """
     # Verify the asset exists in our database
     asset = await get_asset_by_ticker(ticker_symbol)

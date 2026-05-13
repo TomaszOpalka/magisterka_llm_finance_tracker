@@ -10,7 +10,7 @@ class Base(DeclarativeBase):
 class FinancialAsset(Base):
     """
     Database model representing a financial asset.
-    Strictly uses 'asset_id' as the Primary Key to satisfy architecture constraints.
+    Strictly maintains snake_case naming for database columns.
     """
     __tablename__ = "financial_assets"
 

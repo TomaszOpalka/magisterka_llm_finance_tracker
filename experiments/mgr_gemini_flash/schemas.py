@@ -1,31 +1,35 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, AliasGenerator
+from pydantic.alias_generators import to_camel
 from typing import Optional
 from datetime import datetime
 
-class FinancialAssetBase(BaseModel):
-    """Base schema for common asset attributes."""
+class BaseSchema(BaseModel):
+    """
+    Base schema configuration to handle global snake_case to camelCase mapping.
+    Database remains snake_case; API uses camelCase.
+    """
+    model_config = ConfigDict(
+        alias_generator=AliasGenerator(
+            validation_alias=to_camel,
+            serialization_alias=to_camel,
+        ),
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class FinancialAssetBase(BaseSchema):
     ticker_symbol: str
     last_price: float
     market_cap: Optional[float] = None
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """Schema for creating a new asset."""
     pass
 
 class FinancialAsset(FinancialAssetBase):
-    """Schema for returning asset data, including system-generated fields."""
     asset_id: str
     last_updated: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
-
-class AssetAnalytics(BaseModel):
-    """Sub-model for specific technical indicators."""
-    moving_average_30d: Optional[float] = None
-    rsi_14: Optional[float] = None
-
-class AnalyticsResponse(BaseModel):
-    """Comprehensive response for the analytics endpoint."""
+class AnalyticsResponse(BaseSchema):
     ticker_symbol: str
     moving_average_30d: Optional[float] = None
     rsi_14: Optional[float] = None

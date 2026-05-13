@@ -1,18 +1,37 @@
 """
 Pydantic v2 schemas for the Finance Track system.
-Defines models for asset creation, read, and analytics responses.
+All API-visible fields use camelCase via an automatic alias generator.
+Internal database columns remain snake_case and are mapped transparently.
 """
 
 from datetime import datetime
 from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class FinancialAssetBase(BaseModel):
+def _to_camel(snake: str) -> str:
+    """Convert snake_case string to camelCase (e.g., asset_id -> assetId)."""
+    parts = snake.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
+
+class CamelCaseModel(BaseModel):
     """
-    Base schema containing common fields for a financial asset.
-    Used as a parent for creation and read schemas.
+    Base model that configures automatic camelCase aliasing.
+    Fields defined in snake_case are serialised as camelCase,
+    and camelCase input is accepted and mapped back to snake_case.
+    """
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        populate_by_name=True,
+    )
+
+
+class FinancialAssetBase(CamelCaseModel):
+    """
+    Common fields for financial assets.
+    API keys: tickerSymbol, lastPrice, marketCap, lastUpdated.
+    Database columns remain: ticker_symbol, last_price, market_cap, last_updated.
     """
 
     ticker_symbol: str = Field(
@@ -29,29 +48,33 @@ class FinancialAssetBase(BaseModel):
 
 class FinancialAssetCreate(FinancialAssetBase):
     """
-    Schema used when creating a new asset.
-    Does not include the asset_id because it is generated server-side.
+    Schema used for creating a new asset.
+    Inherits all fields and aliases; assetId is not included.
     """
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
     """
-    Schema returned when reading a single asset.
-    Includes the primary key asset_id and supports ORM mapping.
+    Schema for reading an asset.
+    Adds the primary key asset_id, exposed as 'assetId'.
+    Supports ORM mapping (from_attributes=True).
     """
-
     asset_id: str = Field(..., description="Primary key (UUID)")
 
-    model_config = ConfigDict(from_attributes=True)
+    # Override config to add ORM support while keeping camelCase aliasing
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
-class AssetAnalytics(BaseModel):
+class AssetAnalytics(CamelCaseModel):
     """
-    Legacy analytics model – contains only the 30-day moving average.
-    Retained for backward compatibility.
+    Legacy analytics response, containing only the 30-day moving average.
+    Keys: tickerSymbol, movingAverage30d.
     """
-
     ticker_symbol: str
     moving_average_30d: float
 
@@ -60,6 +83,6 @@ class AnalyticsResponse(AssetAnalytics):
     """
     Full analytics response for the /assets/{ticker}/analytics endpoint.
     Extends AssetAnalytics with the 14-day RSI.
+    Keys: tickerSymbol, movingAverage30d, rsi14.
     """
-
     rsi_14: float = Field(..., description="14-day Relative Strength Index (0-100)")

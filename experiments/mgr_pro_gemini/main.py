@@ -21,8 +21,8 @@ logger = logging.getLogger("finance_track")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager handling database schema initialization and validation."""
-    logger.info("Initializing database and verifying architecture constraints.")
+    """Lifecycle manager handling database initialization."""
+    logger.info("Initializing database with snake_case schema.")
     
     async with engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
@@ -31,22 +31,16 @@ async def lifespan(app: FastAPI):
         result = await conn.execute(pragma_query)
         existing_columns = [row[1] for row in result.fetchall()]
         
-        if "last_updated" not in existing_columns:
-            logger.info("Executing migration: Adding 'last_updated' column.")
-            await conn.execute(text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;"))
-            
         if "id" in existing_columns and "asset_id" not in existing_columns:
             logger.critical("Database validation failed. Forbidden 'id' column detected.")
             raise ValueError("Invalid Primary Key configuration. Must use 'asset_id'.")
             
-    logger.info("Database validation successful. 'asset_id' confirmed as Primary Key.")
+    logger.info("Database validation successful. Ready to serve API requests in camelCase.")
     yield
     await engine.dispose()
     logger.info("Database connections terminated cleanly.")
 
-
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
-
 
 @app.exception_handler(exceptions.FinanceException)
 async def finance_exception_handler(request: Request, exc: exceptions.FinanceException):
@@ -62,32 +56,43 @@ async def external_api_exception_handler(request: Request, exc: exceptions.Exter
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency provider for database sessions."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
 
-
 @app.get("/status")
 async def healthcheck():
-    """Validates the API operational status."""
     return {"status": "ok", "service": settings.APP_NAME}
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset])
 async def read_assets(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    min_price: Optional[float] = Query(None, ge=0.0),
-    sort_by: str = Query("ticker_symbol"),
+    minPrice: Optional[float] = Query(None, ge=0.0, alias="minPrice"),
+    sortBy: str = Query("tickerSymbol", alias="sortBy"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Fetches a paginated and sorted list of tracked assets."""
+    """
+    Fetches a paginated list of assets. 
+    Notice the query parameters accept camelCase (minPrice, sortBy).
+    We map the frontend 'sortBy' value back to internal snake_case for the database query.
+    """
+    # Map API camelCase sort parameter back to database snake_case column
+    sort_mapping = {
+        "assetId": "asset_id",
+        "tickerSymbol": "ticker_symbol",
+        "lastPrice": "last_price",
+        "marketCap": "market_cap",
+        "lastUpdated": "last_updated"
+    }
+    db_sort_by = sort_mapping.get(sortBy, "ticker_symbol")
+
     try:
-        assets = await crud.get_assets(db, skip, limit, min_price, sort_by)
+        # Pass mapped snake_case parameter to CRUD layer
+        assets = await crud.get_assets(db, skip, limit, minPrice, db_sort_by)
     except Exception as e:
         logger.error(f"Database read failure: {e}")
         raise exceptions.DatabaseConnectionException()
@@ -96,17 +101,17 @@ async def read_assets(
         raise exceptions.AssetNotFoundException(detail="No assets match the query parameters.")
     return assets
 
-@app.get("/assets/{ticker_symbol}", response_model=schemas.FinancialAsset)
-async def read_asset_by_ticker(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
+@app.get("/assets/{tickerSymbol}", response_model=schemas.FinancialAsset)
+async def read_asset_by_ticker(tickerSymbol: str, db: AsyncSession = Depends(get_db)):
     """Retrieves specific details for a single asset."""
-    asset = await crud.get_asset_by_ticker(db, ticker_symbol.upper())
+    asset = await crud.get_asset_by_ticker(db, tickerSymbol.upper())
     if not asset:
         raise exceptions.AssetNotFoundException()
     return asset
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
-    """Registers a new asset into the tracking system."""
+    """Registers a new asset. Accepts camelCase JSON payload."""
     try:
         return await crud.create_asset(db, asset)
     except IntegrityError:
@@ -119,18 +124,18 @@ async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depe
 
 @app.post("/assets/sync", status_code=200)
 async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
-    """Initiates a batch update of current market prices."""
     try:
         results = await crud.update_all_assets_prices(db)
-        return {"detail": f"Update processed successfully. Records updated: {results['updated']}", "failed": results['failed']}
+        # Note: Response keys defined directly here are standard Python dicts, 
+        # but sticking to camelCase for the API standard.
+        return {"detail": f"Update processed successfully. Records updated: {results['updated']}", "failedTickers": results['failed']}
     except Exception as e:
         logger.error(f"Batch synchronization failed: {e}")
         raise exceptions.ExternalAPIException()
 
-@app.get("/assets/{ticker_symbol}/analytics", response_model=schemas.AnalyticsResponse)
-async def get_asset_analytics(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
-    """Computes technical indicators for a specific asset using historical data."""
-    ticker = ticker_symbol.upper()
+@app.get("/assets/{tickerSymbol}/analytics", response_model=schemas.AnalyticsResponse)
+async def get_asset_analytics(tickerSymbol: str, db: AsyncSession = Depends(get_db)):
+    ticker = tickerSymbol.upper()
     asset = await crud.get_asset_by_ticker(db, ticker)
     
     if not asset:

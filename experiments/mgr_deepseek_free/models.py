@@ -1,6 +1,6 @@
 """
 SQLAlchemy 2.0 ORM models for the Finance Track system.
-The only table is ´financial_assets´ with primary key asset_id (String).
+Table columns are strictly snake_case. The primary key is asset_id (String).
 """
 
 from datetime import datetime
@@ -15,9 +15,9 @@ class Base(DeclarativeBase):
 
 class FinancialAsset(Base):
     """
-    Representation of a financial asset (e.g. stock, ETF).
+    Representation of a financial asset.
     Table name: financial_assets
-    Primary key: asset_id (UUID string) – NOT id.
+    Primary key: asset_id (UUID string) – never 'id'.
     """
 
     __tablename__ = "financial_assets"

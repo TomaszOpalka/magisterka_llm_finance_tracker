@@ -1,0 +1,27 @@
+Prompt 18: START PR #67 – The Global camelCase Transformation
+To jest moment, w którym sprawdzimy, czy modele „pękną” przy zmianie kontraktu API.
+
+
+"We are officially starting Pull Request #67. This is the most critical refactor of the project. Everything in the code must remain in English. Explain your logic in Polish under the code block.
+
+TASK: Global snake_case to camelCase Mapping (API Level Only)
+
+schemas.py (Major Refactor):
+
+Use Pydantic's AliasGenerator or explicit Field(serialization_alias=...) to ensure that all API responses and requests use camelCase.
+
+Fields like asset_id must become assetId, ticker_symbol -> tickerSymbol, last_price -> lastPrice, market_cap -> marketCap, and last_updated -> lastUpdated.
+
+CRITICAL: The database columns in models.py MUST remain in snake_case. This is a transformation layer test.
+
+main.py & test_api.py:
+
+Update all endpoints and the test script to reflect these changes. The API consumer should never see a single underscore in the JSON keys.
+
+Strict Enforcement:
+
+NO CODE LAZINESS: Provide full files.
+
+PRIMARY KEY: The database field is still asset_id, but the API field is assetId.
+
+Prove that you can maintain the separation between the Database Layer (snake_case) and the Presentation Layer (camelCase)."
