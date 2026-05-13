@@ -1,76 +1,84 @@
 """
-Main FastAPI application for Finance Track system.
-Production-ready with analytics and external data integration.
+Main FastAPI application for Finance Track.
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime
-from typing import AsyncGenerator, List, Optional
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends
+from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi import Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from analytics import calculate_moving_average
+from analytics import calculate_rsi
 from config import settings
-from database import async_session, engine
-from models import Base, FinancialAsset
-from schemas import (
-    FinancialAsset,
-    FinancialAssetCreate,
-    AnalyticsResponse,
-)
-from crud import (
-    get_assets,
-    create_asset,
-    get_asset_by_ticker,
-)
-from services import (
-    get_stock_price,
-    get_historical_data,
-    StockServiceException,
-)
-from analytics import (
-    calculate_moving_average,
-    calculate_rsi,
-)
-from exceptions import (
-    FinanceException,
-    AssetNotFoundException,
-    DatabaseConnectionException,
-)
+from crud import create_asset
+from crud import get_asset_by_ticker
+from crud import get_assets
+from crud import update_all_assets_prices
+from database import AsyncSessionLocal
+from database import engine
+from exceptions import AssetNotFoundException
+from exceptions import DatabaseConnectionException
+from exceptions import FinanceException
+from models import Base
+from schemas import AnalyticsResponse
+from schemas import FinancialAsset
+from schemas import FinancialAssetCreate
+from services import get_historical_data
 from utils import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application lifecycle management.
-    Initializes database and applies lightweight migration.
+    Application lifespan handler.
     """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-        # SQLite schema check for last_updated column
-        result = await conn.execute(
-            text("PRAGMA table_info(financial_assets);")
-        )
-        columns = [row[1] for row in result.fetchall()]
-
-        if "last_updated" not in columns:
-            await conn.execute(
+            result = await conn.execute(
                 text(
-                    "ALTER TABLE financial_assets "
-                    "ADD COLUMN last_updated DATETIME;"
+                    """
+                    PRAGMA table_info(financial_assets)
+                    """
                 )
             )
 
-    logger.info(f"{settings.APP_NAME} started (PK: asset_id)")
+            columns = [row[1] for row in result.fetchall()]
 
-    yield
+            if "last_updated" not in columns:
+                await conn.execute(
+                    text(
+                        """
+                        ALTER TABLE financial_assets
+                        ADD COLUMN last_updated DATETIME
+                        """
+                    )
+                )
 
-    logger.info("Application shutdown")
+        logger.info(
+            "Application startup completed successfully."
+        )
+        logger.info(
+            "Primary key configuration verified: asset_id"
+        )
+
+        yield
+
+    except Exception as error:
+        logger.error(
+            "Database initialization failed: %s",
+            error,
+        )
+        raise DatabaseConnectionException(
+            detail="Database initialization failed.",
+        ) from error
 
 
 app = FastAPI(
@@ -79,56 +87,72 @@ app = FastAPI(
 )
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[
+    AsyncSession,
+    None,
+]:
     """
-    Database session dependency.
+    Provide asynchronous database session.
     """
-    async with async_session() as session:
+    async with AsyncSessionLocal() as session:
         yield session
 
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(
-    request: Request,
+    request,
     exc: FinanceException,
 ):
-    logger.error(f"Finance error (asset_id): {exc.detail}")
+    """
+    Handle custom finance exceptions.
+    """
+    logger.error(
+        "Finance exception raised for asset_id operation: %s",
+        exc.detail,
+    )
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={
+            "detail": exc.detail,
+        },
     )
 
 
-@app.exception_handler(SQLAlchemyError)
-async def db_exception_handler(
-    request: Request,
-    exc: SQLAlchemyError,
+@app.exception_handler(HTTPException)
+async def http_exception_handler(
+    request,
+    exc: HTTPException,
 ):
-    logger.error(f"Database error (asset_id): {str(exc)}")
-
-    db_exc = DatabaseConnectionException()
+    """
+    Handle HTTP exceptions.
+    """
+    logger.error(
+        "HTTP exception raised: %s",
+        exc.detail,
+    )
 
     return JSONResponse(
-        status_code=db_exc.status_code,
-        content={"detail": db_exc.detail},
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+        },
     )
 
 
-@app.exception_handler(StockServiceException)
-async def stock_service_exception_handler(
-    request: Request,
-    exc: StockServiceException,
-):
-    logger.error(f"Stock service error: {str(exc)}")
-
-    return JSONResponse(
-        status_code=503,
-        content={"detail": "Stock data service unavailable"},
-    )
+@app.get("/")
+async def root():
+    """
+    Root endpoint.
+    """
+    return {
+        "message": "Finance Track API running",
+        "port": 8003,
+    }
 
 
 @app.get("/status")
-async def healthcheck() -> dict:
+async def status():
     """
     Healthcheck endpoint.
     """
@@ -138,90 +162,131 @@ async def healthcheck() -> dict:
     }
 
 
-@app.get("/assets", response_model=List[FinancialAsset])
+@app.get(
+    "/assets",
+    response_model=list[FinancialAsset],
+)
 async def read_assets(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
-    min_price: Optional[float] = Query(None, ge=0),
-    sort_by: str = Query("ticker_symbol"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+    ),
+    min_price: float | None = Query(
+        default=None,
+        ge=0,
+    ),
+    sort_by: str = Query(
+        default="ticker_symbol",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve assets with filtering and pagination.
+    Retrieve all assets.
     """
-    assets = await get_assets(db, skip, limit, min_price, sort_by)
+    assets = await get_assets(
+        db=db,
+        skip=skip,
+        limit=limit,
+        min_price=min_price,
+        sort_by=sort_by,
+    )
 
     if not assets:
-        raise AssetNotFoundException()
+        raise AssetNotFoundException(
+            detail="No financial assets found.",
+        )
 
     return assets
 
 
-@app.get("/assets/{ticker_symbol}", response_model=FinancialAsset)
-async def read_asset(
+@app.post(
+    "/assets",
+    response_model=FinancialAsset,
+    status_code=201,
+)
+async def create_new_asset(
+    asset: FinancialAssetCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a new financial asset.
+    """
+    try:
+        return await create_asset(
+            db=db,
+            asset=asset,
+        )
+
+    except Exception as error:
+        logger.error(
+            "Asset creation failed: %s",
+            error,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Asset creation failed.",
+        ) from error
+
+
+@app.get(
+    "/assets/{ticker_symbol}",
+    response_model=FinancialAsset,
+)
+async def get_asset(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve a single asset by ticker.
+    Retrieve asset by ticker symbol.
     """
-    asset = await get_asset_by_ticker(db, ticker_symbol)
+    asset = await get_asset_by_ticker(
+        db=db,
+        ticker_symbol=ticker_symbol,
+    )
 
-    if not asset:
-        raise AssetNotFoundException()
+    if asset is None:
+        raise AssetNotFoundException(
+            detail=(
+                f"Asset with ticker "
+                f"{ticker_symbol} not found."
+            ),
+        )
 
     return asset
 
 
-@app.post("/assets", response_model=FinancialAsset, status_code=201)
-async def add_asset(
-    asset_in: FinancialAssetCreate,
+@app.post("/assets/sync")
+async def sync_asset_prices(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Create new asset.
+    Synchronize all asset prices.
     """
-    return await create_asset(db, asset_in)
+    try:
+        updated_assets = await update_all_assets_prices(
+            db=db,
+        )
 
+        return {
+            "message": (
+                "Asset synchronization completed."
+            ),
+            "updated_assets": updated_assets,
+        }
 
-@app.post("/assets/sync")
-async def sync_prices(db: AsyncSession = Depends(get_db)):
-    """
-    Synchronize asset prices from external API with resilience.
-    """
-    result = await db.execute(select(FinancialAsset))
-    assets = result.scalars().all()
+    except Exception as error:
+        logger.error(
+            "Synchronization failed: %s",
+            error,
+        )
 
-    updated = 0
-
-    for asset in assets:
-        try:
-            price = await get_stock_price(asset.ticker_symbol)
-
-            if price is None:
-                logger.warning(
-                    f"No price data for ticker={asset.ticker_symbol} "
-                    f"(asset_id={asset.asset_id})"
-                )
-                continue
-
-            asset.last_price = price
-            asset.last_updated = datetime.utcnow()
-            updated += 1
-
-        except Exception as exc:
-            logger.error(
-                f"Failed to update ticker={asset.ticker_symbol} "
-                f"(asset_id={asset.asset_id}): {exc}"
-            )
-            continue
-
-    await db.commit()
-
-    return {
-        "status": "success",
-        "updated_records": updated,
-    }
+        raise HTTPException(
+            status_code=500,
+            detail="Synchronization failed.",
+        ) from error
 
 
 @app.get(
@@ -233,47 +298,43 @@ async def get_asset_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Return analytical indicators for an asset.
+    Retrieve analytics for a financial asset.
     """
-    # Verify asset exists in local database
-    asset = await get_asset_by_ticker(db, ticker_symbol)
+    asset = await get_asset_by_ticker(
+        db=db,
+        ticker_symbol=ticker_symbol,
+    )
 
-    if not asset:
-        raise AssetNotFoundException()
-
-    try:
-        # Fetch 30 days of historical data
-        prices = await get_historical_data(
-            ticker_symbol,
-            days=30,
+    if asset is None:
+        raise AssetNotFoundException(
+            detail=(
+                f"Asset with ticker "
+                f"{ticker_symbol} not found."
+            ),
         )
 
-        if len(prices) < 15:
-            raise StockServiceException(
-                "Insufficient historical data"
-            )
+    historical_prices = await get_historical_data(
+        ticker=ticker_symbol,
+        days=30,
+    )
 
-        moving_average = calculate_moving_average(prices)
-        rsi = calculate_rsi(prices, periods=14)
-
-        if moving_average is None or rsi is None:
-            raise StockServiceException(
-                "Failed to calculate analytics"
-            )
-
-        return AnalyticsResponse(
-            ticker_symbol=ticker_symbol,
-            moving_average_30d=moving_average,
-            rsi_14=rsi,
+    if not historical_prices:
+        raise HTTPException(
+            status_code=503,
+            detail="Historical data unavailable.",
         )
 
-    except Exception as exc:
-        logger.error(
-            f"Analytics error for "
-            f"ticker={ticker_symbol} "
-            f"(asset_id={asset.asset_id}): {exc}"
-        )
+    moving_average = calculate_moving_average(
+        historical_prices,
+    )
 
-        raise StockServiceException(
-            "Analytics processing failed"
-        ) from exc
+    rsi_value = calculate_rsi(
+        historical_prices,
+        periods=14,
+    )
+
+    return AnalyticsResponse(
+        ticker_symbol=ticker_symbol,
+        moving_average_30d=moving_average,
+        rsi_14=rsi_value,
+    )

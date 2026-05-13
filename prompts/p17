@@ -1,0 +1,21 @@
+Treść do wklejenia modelowi (Prompt 17):
+
+"CRITICAL UPDATE: The automated validator failed for several reasons. You must fix these issues immediately to maintain the research integrity. Everything must be in English (zero Polish allowed in code/comments). Explain your fixes in Polish under the code block.
+
+TASK: System Hardening & Cleanup
+
+Zero Polish Policy: My automated tests found Polish comments and docstrings. Remove ALL of them. Use English only. This is a non-negotiable KPI.
+
+Fix Imports (Cross-file check): Ensure schemas.py contains all required models: FinancialAsset, FinancialAssetCreate, AssetAnalytics, and AnalyticsResponse. Verify that main.py imports them correctly.
+
+Fix Logic Errors: Ensure test_logic.py passes 100%. If any math logic for RSI or Moving Average was incomplete, fix it now.
+
+No Code Laziness: Provide the FULL content of schemas.py, models.py, and main.py. Do not skip lines. Do not use placeholders.
+
+REMINDER:
+
+Primary Key must be asset_id (String).
+
+Use SQLAlchemy 2.0 and Pydantic v2 standards.
+
+Ensure the lifespan event in main.py is robust and handles the asset_id PK correctly."

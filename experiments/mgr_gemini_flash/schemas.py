@@ -1,42 +1,32 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional, Annotated
+from pydantic import BaseModel, ConfigDict
+from typing import Optional
 from datetime import datetime
 
-
 class FinancialAssetBase(BaseModel):
-    """
-    Bazowy schemat z rygorystyczną walidacją polską i biznesową.
-    """
-    # Ticker: tylko wielkie litery, od 1 do 5 znaków (np. AAPL, BTC)
-    ticker_symbol: Annotated[str, Field(pattern=r"^[A-Z]{1,5}$")]
-    
-    # Cena: nie może być ujemna
-    last_price: Annotated[float, Field(ge=0)]
-    
-    # Kapitalizacja rynkowa
-    market_cap: int
-    
-    # Pole czasu aktualizacji, domyślnie None
-    last_updated: Optional[datetime] = None
-
+    """Base schema for common asset attributes."""
+    ticker_symbol: str
+    last_price: float
+    market_cap: Optional[float] = None
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """Schemat używany przy tworzeniu nowego zasobu."""
+    """Schema for creating a new asset."""
     pass
 
-
 class FinancialAsset(FinancialAssetBase):
-    """Pełny schemat odczytu danych z bazy."""
+    """Schema for returning asset data, including system-generated fields."""
     asset_id: str
+    last_updated: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
+class AssetAnalytics(BaseModel):
+    """Sub-model for specific technical indicators."""
+    moving_average_30d: Optional[float] = None
+    rsi_14: Optional[float] = None
+
 class AnalyticsResponse(BaseModel):
-    """
-    Structured response for financial analytics, including 
-    moving averages and momentum indicators.
-    """
+    """Comprehensive response for the analytics endpoint."""
     ticker_symbol: str
-    moving_average_30d: float
-    rsi_14: Optional[float]
+    moving_average_30d: Optional[float] = None
+    rsi_14: Optional[float] = None
     data_points: int

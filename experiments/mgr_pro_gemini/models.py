@@ -1,34 +1,34 @@
-from datetime import datetime
-from sqlalchemy import String, Float, BigInteger, DateTime
-from sqlalchemy.sql import func
+import uuid
+from datetime import datetime, timezone
+from sqlalchemy import String, Float, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-
 class Base(DeclarativeBase):
-    """Klasa bazowa dla wszystkich modeli w systemie."""
+    """Base class for SQLAlchemy 2.0 declarative models."""
     pass
 
-
 class FinancialAsset(Base):
-    """Model reprezentujący instrumenty finansowe w bazie danych SQLite."""
+    """
+    Database model representing a financial asset.
+    Strictly uses 'asset_id' as the Primary Key to satisfy architecture constraints.
+    """
     __tablename__ = "financial_assets"
 
-    # Rygor Nomenklatury: Klucz główny to bezwzględnie 'asset_id' typu String
-    asset_id: Mapped[str] = mapped_column(String, primary_key=True)
-
+    asset_id: Mapped[str] = mapped_column(
+        String, 
+        primary_key=True, 
+        default=lambda: str(uuid.uuid4())
+    )
     ticker_symbol: Mapped[str] = mapped_column(
         String, 
         unique=True, 
-        index=True
+        index=True, 
+        nullable=False
     )
-
-    last_price: Mapped[float] = mapped_column(Float)
-
-    market_cap: Mapped[int] = mapped_column(BigInteger)
-
-    # Poprawnie podłączona kolumna z czasem aktualizacji (wymaga func.now())
-    last_updated: Mapped[datetime] = mapped_column(
+    last_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_updated: Mapped[datetime | None] = mapped_column(
         DateTime, 
-        server_default=func.now(), 
-        nullable=True
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
