@@ -29,23 +29,23 @@ async def test_create_and_get_asset(client):
     """Integration test for POST /assets and GET /assets/{ticker_symbol}."""
     # 1. Test POST /assets
     asset_payload = {
-        "ticker_symbol": "MSFT",
-        "last_price": 420.50,
-        "market_cap": 3000000000000
+        "tickerSymbol": "MSFT",
+        "lastPrice": 420.50,
+        "marketCap": 3000000000000
     }
     post_response = await client.post("/assets", json=asset_payload)
     assert post_response.status_code == 201
     data = post_response.json()
-    assert data["ticker_symbol"] == "MSFT"
-    assert "asset_id" in data  # Ensure custom asset_id is generated
-    assert isinstance(data["asset_id"], str)
+    assert data["tickerSymbol"] == "MSFT"
+    assert "assetId" in data  # Ensure custom assetId is generated
+    assert isinstance(data["assetId"], str)
 
     # 2. Test GET /assets/{ticker_symbol}
     get_response = await client.get("/assets/MSFT")
     assert get_response.status_code == 200
     get_data = get_response.json()
-    assert get_data["ticker_symbol"] == "MSFT"
-    assert get_data["asset_id"] == data["asset_id"]
+    assert get_data["tickerSymbol"] == "MSFT"
+    assert get_data["assetId"] == data["assetId"]
 
 @pytest.mark.asyncio
 async def test_get_non_existent_asset(client):

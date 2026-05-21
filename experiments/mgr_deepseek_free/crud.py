@@ -17,6 +17,8 @@ from schemas import FinancialAssetCreate
 from services import get_stock_price
 from utils import logger
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 # Allowed fields for dynamic sorting – internal column names (snake_case)
 ALLOWED_SORT_FIELDS = {
     "asset_id",
@@ -28,6 +30,7 @@ ALLOWED_SORT_FIELDS = {
 
 
 async def get_assets(
+    db: AsyncSession,
     skip: int = 0,
     limit: int = 10,
     min_price: Optional[float] = None,
@@ -35,83 +38,55 @@ async def get_assets(
 ) -> list[FinancialAsset]:
     """
     Retrieve assets with optional filtering, sorting, and pagination.
-
-    Args:
-        skip: Records to skip (default 0).
-        limit: Maximum records to return (default 10, max 100).
-        min_price: Optional minimum price filter (applied to current_market_price).
-        sort_by: Column to sort ascending (allowed: asset_id, ticker_symbol,
-                 current_market_price, market_cap, last_updated).
-
-    Returns:
-        List of FinancialAsset ORM objects.
     """
-    async with async_session() as session:
-        query = select(FinancialAsset)
+    query = select(FinancialAsset)
 
-        if min_price is not None:
-            query = query.where(FinancialAsset.current_market_price >= min_price)
+    if min_price is not None:
+        query = query.where(FinancialAsset.current_market_price >= min_price)
 
-        # Safe dynamic ordering
-        sort_by = sort_by if sort_by in ALLOWED_SORT_FIELDS else "ticker_symbol"
-        column = getattr(FinancialAsset, sort_by)
-        query = query.order_by(asc(column)).offset(skip).limit(limit)
+    # Safe dynamic ordering
+    sort_by = sort_by if sort_by in ALLOWED_SORT_FIELDS else "ticker_symbol"
+    column = getattr(FinancialAsset, sort_by)
+    query = query.order_by(asc(column)).offset(skip).limit(limit)
 
-        result = await session.execute(query)
-        return result.scalars().all()
+    result = await db.execute(query)
+    return result.scalars().all()
 
 
-async def get_asset_by_ticker(ticker_symbol: str) -> Optional[FinancialAsset]:
+async def get_asset_by_ticker(db: AsyncSession, ticker_symbol: str) -> Optional[FinancialAsset]:
     """
     Fetch a single asset by its ticker symbol.
-
-    Args:
-        ticker_symbol: Stock symbol (unique).
-
-    Returns:
-        FinancialAsset if found, else None.
     """
-    async with async_session() as session:
-        result = await session.execute(
-            select(FinancialAsset).where(FinancialAsset.ticker_symbol == ticker_symbol)
-        )
-        return result.scalars().first()
+    result = await db.execute(
+        select(FinancialAsset).where(FinancialAsset.ticker_symbol == ticker_symbol)
+    )
+    return result.scalars().first()
 
 
-async def create_asset(asset_data: FinancialAssetCreate) -> FinancialAsset:
+async def create_asset(db: AsyncSession, asset_data: FinancialAssetCreate) -> FinancialAsset:
     """
     Create a new financial asset record.
-
-    Args:
-        asset_data: Validated Pydantic schema (internal attr: current_market_price).
-
-    Returns:
-        The newly created FinancialAsset object.
-
-    Raises:
-        ValueError: If integrity is violated (e.g., duplicate ticker).
     """
     new_id = str(uuid.uuid4())
 
-    async with async_session() as session:
-        asset = FinancialAsset(
-            asset_id=new_id,
-            ticker_symbol=asset_data.ticker_symbol,
-            current_market_price=asset_data.current_market_price,
-            market_cap=asset_data.market_cap,
-            last_updated=asset_data.last_updated,
-        )
-        session.add(asset)
-        try:
-            await session.commit()
-            await session.refresh(asset)
-            logger.info(f"Created asset {asset.asset_id} ({asset.ticker_symbol}).")
-            return asset
-        except IntegrityError as exc:
-            await session.rollback()
-            raise ValueError(
-                f"Cannot create asset: '{asset_data.ticker_symbol}' may already exist."
-            ) from exc
+    asset = FinancialAsset(
+        asset_id=new_id,
+        ticker_symbol=asset_data.ticker_symbol,
+        current_market_price=asset_data.current_market_price,
+        market_cap=asset_data.market_cap,
+        last_updated=asset_data.last_updated,
+    )
+    db.add(asset)
+    try:
+        await db.commit()
+        await db.refresh(asset)
+        logger.info(f"Created asset {asset.asset_id} ({asset.ticker_symbol}).")
+        return asset
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ValueError(
+            f"Cannot create asset: '{asset_data.ticker_symbol}' may already exist."
+        ) from exc
 
 
 async def update_all_assets_prices(db) -> dict:

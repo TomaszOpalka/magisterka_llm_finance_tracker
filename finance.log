@@ -1964,3 +1964,319 @@ FROM financial_assets
 WHERE financial_assets.ticker_symbol = ?]
 [parameters: ('INVALID',)]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-21 21:48:37,555 - INFO - Created asset with asset_id=a0a3a640-8c7a-4809-a497-b4eb91684bd9
+2026-05-21 21:48:40,529 - WARNING - Domain Exception context triggered: Asset NONEXISTENT not discovered. at /assets/NONEXISTENT
+[2026-05-21 21:48:43] CRITICAL - finance_track - Unhandled exception: (sqlite3.OperationalError) no such table: financial_assets
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.current_market_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets 
+WHERE financial_assets.ticker_symbol = ?]
+[parameters: ('INVALID',)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8) (path: /assets/INVALID)
+Traceback (most recent call last):
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 182, in execute
+    self._adapt_connection._handle_exception(error)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 342, in _handle_exception
+    raise error
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 164, in execute
+    self.await_(_cursor.execute(operation, parameters))
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlite3.OperationalError: no such table: financial_assets
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\experiments\mgr_deepseek_free\main.py", line 191, in read_asset_by_ticker
+    asset = await get_asset_by_ticker(ticker_symbol)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\experiments\mgr_deepseek_free\crud.py", line 75, in get_asset_by_ticker
+    result = await session.execute(
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 449, in execute
+    result = await greenlet_spawn(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 201, in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 182, in execute
+    self._adapt_connection._handle_exception(error)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 342, in _handle_exception
+    raise error
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 164, in execute
+    self.await_(_cursor.execute(operation, parameters))
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: financial_assets
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.current_market_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets 
+WHERE financial_assets.ticker_symbol = ?]
+[parameters: ('INVALID',)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-05-21 21:49:34] CRITICAL - finance_track - Unhandled exception: (sqlite3.OperationalError) no such table: financial_assets
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.current_market_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets 
+WHERE financial_assets.ticker_symbol = ?]
+[parameters: ('INVALID',)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8) (path: /assets/INVALID)
+Traceback (most recent call last):
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 182, in execute
+    self._adapt_connection._handle_exception(error)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 342, in _handle_exception
+    raise error
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 164, in execute
+    self.await_(_cursor.execute(operation, parameters))
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlite3.OperationalError: no such table: financial_assets
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\experiments\mgr_deepseek_free\main.py", line 191, in read_asset_by_ticker
+    asset = await get_asset_by_ticker(ticker_symbol)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\experiments\mgr_deepseek_free\crud.py", line 75, in get_asset_by_ticker
+    result = await session.execute(
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 449, in execute
+    result = await greenlet_spawn(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 201, in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 182, in execute
+    self._adapt_connection._handle_exception(error)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 342, in _handle_exception
+    raise error
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 164, in execute
+    self.await_(_cursor.execute(operation, parameters))
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: financial_assets
+[SQL: SELECT financial_assets.asset_id, financial_assets.ticker_symbol, financial_assets.current_market_price, financial_assets.market_cap, financial_assets.last_updated 
+FROM financial_assets 
+WHERE financial_assets.ticker_symbol = ?]
+[parameters: ('INVALID',)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-05-21 21:50:17] INFO - finance_track - Created asset 1aa925ea-b1f1-4373-b260-c282be90f871 (AAPL).
+[2026-05-21 21:50:17] INFO - finance_track - Created asset: 1aa925ea-b1f1-4373-b260-c282be90f871 (AAPL)
+[2026-05-21 21:50:17] INFO - finance_track - Created asset bd6482d5-f97a-4e9f-b0d9-936fddf96b12 (GOOGL).
+[2026-05-21 21:50:17] INFO - finance_track - Created asset: bd6482d5-f97a-4e9f-b0d9-936fddf96b12 (GOOGL)
+[2026-05-21 21:50:17] INFO - finance_track - Fetched asset: GOOGL (assetId=bd6482d5-f97a-4e9f-b0d9-936fddf96b12)
+[2026-05-21 21:50:17] WARNING - finance_track - Asset with ticker 'INVALID' not found.
+[2026-05-21 21:50:17] ERROR - finance_track - Business error [404]: Asset with ticker 'INVALID' not found (primary key: assetId). (path: /assets/INVALID, resource key: asset_id)
+[2026-05-21 21:50:27] INFO - finance_track - Created asset eee72aca-1c3b-4e4b-a4e5-6353422d5e2d (AAPL).
+[2026-05-21 21:50:27] INFO - finance_track - Created asset: eee72aca-1c3b-4e4b-a4e5-6353422d5e2d (AAPL)
+[2026-05-21 21:50:27] INFO - finance_track - Created asset fac1c6cb-3285-4893-8bad-7a8a83aaf4d7 (GOOGL).
+[2026-05-21 21:50:27] INFO - finance_track - Created asset: fac1c6cb-3285-4893-8bad-7a8a83aaf4d7 (GOOGL)
+[2026-05-21 21:50:27] INFO - finance_track - Fetched asset: GOOGL (assetId=fac1c6cb-3285-4893-8bad-7a8a83aaf4d7)
+[2026-05-21 21:50:27] WARNING - finance_track - Asset with ticker 'INVALID' not found.
+[2026-05-21 21:50:27] ERROR - finance_track - Business error [404]: Asset with ticker 'INVALID' not found (primary key: assetId). (path: /assets/INVALID, resource key: asset_id)
+2026-05-21 21:50:42,403 - INFO - Created asset with asset_id=79a7e638-0b5a-4b90-b825-81195707fcf3
+2026-05-21 21:50:42,428 - INFO - Created asset with asset_id=9737e6bc-740f-4513-972e-538c8dbe4c5c
+2026-05-21 21:50:45,658 - WARNING - Domain Exception context triggered: Asset NONEXISTENT not discovered. at /assets/NONEXISTENT
+[2026-05-21 21:50:48] INFO - finance_track - Created asset ead45d0b-f6cb-47c4-b92d-8bcbe2cc55da (AAPL).
+[2026-05-21 21:50:48] INFO - finance_track - Created asset: ead45d0b-f6cb-47c4-b92d-8bcbe2cc55da (AAPL)
+[2026-05-21 21:50:48] INFO - finance_track - Created asset 0649ba9d-bb84-41b2-bfcf-ee7df108332c (GOOGL).
+[2026-05-21 21:50:48] INFO - finance_track - Created asset: 0649ba9d-bb84-41b2-bfcf-ee7df108332c (GOOGL)
+[2026-05-21 21:50:48] INFO - finance_track - Fetched asset: GOOGL (assetId=0649ba9d-bb84-41b2-bfcf-ee7df108332c)
+[2026-05-21 21:50:48] WARNING - finance_track - Asset with ticker 'INVALID' not found.
+[2026-05-21 21:50:48] ERROR - finance_track - Business error [404]: Asset with ticker 'INVALID' not found (primary key: assetId). (path: /assets/INVALID, resource key: asset_id)
+2026-05-21 21:51:30,265 - INFO - Created asset with asset_id=7c4e27b0-a64c-4ba8-8a24-848ebb92065f
+2026-05-21 21:51:30,287 - INFO - Created asset with asset_id=82936d13-5864-4dc0-8297-0e1875bc4340
+2026-05-21 21:51:33,105 - WARNING - Domain Exception context triggered: Asset NONEXISTENT not discovered. at /assets/NONEXISTENT
+[2026-05-21 21:51:36] INFO - finance_track - Created asset 078f3913-4e45-4928-ba1d-29d2bbbe85cf (AAPL).
+[2026-05-21 21:51:36] INFO - finance_track - Created asset: 078f3913-4e45-4928-ba1d-29d2bbbe85cf (AAPL)
+[2026-05-21 21:51:36] INFO - finance_track - Created asset 48b60d87-65ee-49e3-8243-2ab444b998ca (GOOGL).
+[2026-05-21 21:51:36] INFO - finance_track - Created asset: 48b60d87-65ee-49e3-8243-2ab444b998ca (GOOGL)
+[2026-05-21 21:51:36] INFO - finance_track - Fetched asset: GOOGL (assetId=48b60d87-65ee-49e3-8243-2ab444b998ca)
+[2026-05-21 21:51:36] WARNING - finance_track - Asset with ticker 'INVALID' not found.
+[2026-05-21 21:51:36] ERROR - finance_track - Business error [404]: Asset with ticker 'INVALID' not found (primary key: assetId). (path: /assets/INVALID, resource key: asset_id)

@@ -166,7 +166,7 @@ async def read_assets(
     """
     try:
         assets = await get_assets(
-            skip=skip, limit=limit, min_price=min_price, sort_by=sort_by
+            db, skip=skip, limit=limit, min_price=min_price, sort_by=sort_by
         )
         logger.info(f"Fetched {len(assets)} assets.")
         return assets
@@ -188,7 +188,7 @@ async def read_asset_by_ticker(
     Retrieves the details of a single asset.
     Response keys are camelCase (e.g., tickerSymbol, assetId).
     """
-    asset = await get_asset_by_ticker(ticker_symbol)
+    asset = await get_asset_by_ticker(db, ticker_symbol)
     if asset is None:
         logger.warning(f"Asset with ticker '{ticker_symbol}' not found.")
         raise AssetNotFoundException(
@@ -214,7 +214,7 @@ async def create_new_asset(
     The response also uses camelCase, including assetId.
     """
     try:
-        new_asset = await create_asset(asset_data)
+        new_asset = await create_asset(db, asset_data)
         logger.info(f"Created asset: {new_asset.asset_id} ({new_asset.ticker_symbol})")
         return new_asset
     except ValueError as e:
@@ -260,7 +260,7 @@ async def asset_analytics(
     tickerSymbol, movingAverage30d, rsi14.
     """
     # Verify asset existence
-    asset = await get_asset_by_ticker(ticker_symbol)
+    asset = await get_asset_by_ticker(db, ticker_symbol)
     if asset is None:
         logger.warning(f"Asset with ticker '{ticker_symbol}' not found.")
         raise AssetNotFoundException(

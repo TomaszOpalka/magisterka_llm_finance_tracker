@@ -45,12 +45,12 @@ async def test_calculate_rsi():
 async def test_create_and_get_asset(test_client: AsyncClient):
     """
     Tests the full lifecycle of creating an asset and retrieving it.
-    Strictly verifies the primary key constraint (asset_id).
+    Strictly verifies the primary key constraint (assetId).
     """
     payload = {
-        "ticker_symbol": "TSLA",
-        "last_price": 250.50,
-        "market_cap": 800000000000
+        "tickerSymbol": "TSLA",
+        "lastPrice": 250.50,
+        "marketCap": 800000000000
     }
 
     # Step 1: Create the asset via POST
@@ -60,12 +60,12 @@ async def test_create_and_get_asset(test_client: AsyncClient):
     post_data = post_response.json()
     
     # CRITICAL: Verify schema structure and naming conventions
-    assert "asset_id" in post_data, "Primary key 'asset_id' is missing from response."
+    assert "assetId" in post_data, "Primary key 'assetId' is missing from response."
     assert "id" not in post_data, "System violation: 'id' field detected."
-    assert post_data["ticker_symbol"] == "TSLA"
-    assert post_data["last_price"] == 250.50
+    assert post_data["tickerSymbol"] == "TSLA"
+    assert post_data["lastPrice"] == 250.50
     
-    asset_id = post_data["asset_id"]
+    asset_id = post_data["assetId"]
 
     # Step 2: Retrieve the newly created asset via GET
     get_response = await test_client.get("/assets/TSLA")
@@ -74,6 +74,6 @@ async def test_create_and_get_asset(test_client: AsyncClient):
     get_data = get_response.json()
     
     # Verify the retrieved data matches the created database entry
-    assert get_data["asset_id"] == asset_id
-    assert get_data["ticker_symbol"] == "TSLA"
-    assert get_data["last_price"] == 250.50
+    assert get_data["assetId"] == asset_id
+    assert get_data["tickerSymbol"] == "TSLA"
+    assert get_data["lastPrice"] == 250.50
