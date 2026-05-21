@@ -6,34 +6,30 @@ from datetime import datetime
 class FinancialAssetBase(BaseModel):
     """
     Base schema defining the core attributes of a financial asset.
-    Uses Pydantic's ConfigDict and AliasGenerator to automatically map 
-    internal snake_case fields to external camelCase JSON keys for both 
-    inbound requests and outbound responses.
+    Uses explicit aliasing to ensure 'current_market_price' maps to 'lastPrice'
+    in the external JSON API, preserving the public contract.
     """
     ticker_symbol: str = Field(..., description="The unique stock ticker symbol")
-    last_price: Optional[float] = Field(None, ge=0.0, description="Latest traded price")
+    current_market_price: Optional[float] = Field(
+        None, 
+        alias="lastPrice", 
+        ge=0.0, 
+        description="Latest traded price. Exposed to clients as lastPrice."
+    )
     market_cap: Optional[float] = Field(None, ge=0.0, description="Total market capitalization")
 
     model_config = ConfigDict(
         alias_generator=to_camel,
-        populate_by_name=True, # Critical: Allows mapping inbound camelCase to internal snake_case
+        populate_by_name=True,
         from_attributes=True
     )
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """
-    Schema used for accepting incoming creation payloads (POST requests).
-    Inherits the alias_generator and populate_by_name from FinancialAssetBase,
-    meaning the client MUST send camelCase keys (e.g., {"tickerSymbol": "AAPL"}),
-    which Pydantic will internally map to ticker_symbol for the CRUD layer.
-    """
+    """Schema used for accepting incoming creation payloads."""
     pass
 
 class FinancialAsset(FinancialAssetBase):
-    """
-    Complete response schema including system-generated fields.
-    Automatically serializes asset_id to assetId and last_updated to lastUpdated.
-    """
+    """Complete response schema including system-generated fields."""
     asset_id: str = Field(..., description="Primary key identifier")
     last_updated: Optional[datetime] = Field(None, description="Timestamp of last data sync")
 

@@ -18,16 +18,16 @@ async def get_assets(
     min_price: float | None = None, 
     sort_by: str = "ticker_symbol"
 ) -> List[models.FinancialAsset]:
-    """Retrieves assets with filtering, pagination, and sorting."""
+    """Retrieves assets utilizing the newly refactored current_market_price column."""
     query = select(models.FinancialAsset)
     
     if min_price is not None:
-        query = query.where(models.FinancialAsset.last_price >= min_price)
+        query = query.where(models.FinancialAsset.current_market_price >= min_price)
         
     sort_options = {
         "asset_id": models.FinancialAsset.asset_id,
         "ticker_symbol": models.FinancialAsset.ticker_symbol,
-        "last_price": models.FinancialAsset.last_price,
+        "current_market_price": models.FinancialAsset.current_market_price,
         "market_cap": models.FinancialAsset.market_cap,
         "last_updated": models.FinancialAsset.last_updated
     }
@@ -38,21 +38,22 @@ async def get_assets(
     result = await db.execute(query)
     return list(result.scalars().all())
 
-
 async def get_asset_by_ticker(db: AsyncSession, ticker_symbol: str) -> models.FinancialAsset | None:
     """Retrieves a single asset by its unique ticker symbol."""
     query = select(models.FinancialAsset).where(models.FinancialAsset.ticker_symbol == ticker_symbol)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
-
 async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate) -> models.FinancialAsset:
-    """Creates a new financial asset with an auto-generated asset_id."""
+    """
+    Creates a new financial asset.
+    The asset object maps the inbound 'lastPrice' to 'current_market_price' automatically.
+    """
     new_asset_id = str(uuid.uuid4())
     
     db_asset = models.FinancialAsset(
         asset_id=new_asset_id,
-        **asset.model_dump(exclude_unset=True)
+        **asset.model_dump(exclude_unset=True, by_alias=False)
     )
     
     db.add(db_asset)
@@ -61,9 +62,8 @@ async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate) ->
     
     return db_asset
 
-
 async def update_all_assets_prices(db: AsyncSession) -> Dict[str, Any]:
-    """Batch updates all stock prices safely."""
+    """Batch updates all stock prices safely targeting current_market_price."""
     query = select(models.FinancialAsset)
     result = await db.execute(query)
     assets = result.scalars().all()
@@ -78,7 +78,7 @@ async def update_all_assets_prices(db: AsyncSession) -> Dict[str, Any]:
                 failed_tickers.append(asset.ticker_symbol)
                 continue
                 
-            asset.last_price = new_price
+            asset.current_market_price = new_price
             asset.last_updated = func.now()
             updated_count += 1
         except Exception as e:

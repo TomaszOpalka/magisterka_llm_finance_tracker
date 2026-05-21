@@ -1,0 +1,25 @@
+"We are executing a critical production schema migration for the 'Finance Track' project under Pull Request #67. This is a resilience test under high code entropy. Everything in the code must be in English. Explain your logic in Polish under the code block.
+
+TASK: Database Field Mutation & Alias Preservation
+
+models.py (Schema Mutation):
+
+Change the database column name last_price to current_market_price.
+
+Ensure that the column type, server defaults, and everything else remain structurally sound.
+
+crud.py & services.py (Refactor):
+
+Refactor all database queries, update operations, and yfinance synchronization logic to use the new internal field name current_market_price.
+
+schemas.py & main.py (API Contract Preservation):
+
+CRITICAL: The external API contract MUST NOT CHANGE. The JSON response and request payloads must still expose the field as lastPrice in camelCase to the client.
+
+Update your Pydantic alias configuration so that the internal current_market_price attribute maps perfectly to the external lastPrice JSON key.
+
+Strict Enforcement:
+
+NO CODE LAZINESS: Do not provide partial snippets. Provide the COMPLETE updated code for models.py, crud.py, and schemas.py.
+
+PRIMARY KEY: The database field must remain asset_id (String) and map to assetId in the API.

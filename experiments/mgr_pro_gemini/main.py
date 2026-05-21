@@ -22,7 +22,7 @@ logger = logging.getLogger("finance_track")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager handling database initialization."""
-    logger.info("Initializing database with snake_case schema.")
+    logger.info("Initializing database with schema validation.")
     
     async with engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
             logger.critical("Database validation failed. Forbidden 'id' column detected.")
             raise ValueError("Invalid Primary Key configuration. Must use 'asset_id'.")
             
-    logger.info("Database validation successful. Ready to serve API requests in camelCase.")
+    logger.info("Database validation successful. API is ready.")
     yield
     await engine.dispose()
     logger.info("Database connections terminated cleanly.")
@@ -75,14 +75,11 @@ async def read_assets(
     sortBy: str = Query("tickerSymbol", alias="sortBy"),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Fetches a paginated list of assets. 
-    Query parameters accept camelCase (minPrice, sortBy).
-    """
+    """Fetches a paginated list of assets."""
     sort_mapping = {
         "assetId": "asset_id",
         "tickerSymbol": "ticker_symbol",
-        "lastPrice": "last_price",
+        "lastPrice": "current_market_price",
         "marketCap": "market_cap",
         "lastUpdated": "last_updated"
     }
@@ -100,7 +97,6 @@ async def read_assets(
 
 @app.get("/assets/{tickerSymbol}", response_model=schemas.FinancialAsset)
 async def read_asset_by_ticker(tickerSymbol: str, db: AsyncSession = Depends(get_db)):
-    """Retrieves specific details for a single asset."""
     asset = await crud.get_asset_by_ticker(db, tickerSymbol.upper())
     if not asset:
         raise exceptions.AssetNotFoundException()
@@ -108,14 +104,7 @@ async def read_asset_by_ticker(tickerSymbol: str, db: AsyncSession = Depends(get
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Registers a new asset.
-    The payload MUST be provided in camelCase (e.g., tickerSymbol).
-    Pydantic will automatically map it to the internal snake_case schema.
-    """
     try:
-        # The 'asset' object here already has internal attributes mapped as snake_case
-        # (e.g., asset.ticker_symbol), so crud.create_asset requires zero modifications.
         return await crud.create_asset(db, asset)
     except IntegrityError:
         await db.rollback()

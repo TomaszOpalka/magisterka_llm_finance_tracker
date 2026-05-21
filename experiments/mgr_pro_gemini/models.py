@@ -10,7 +10,8 @@ class Base(DeclarativeBase):
 class FinancialAsset(Base):
     """
     Database model representing a financial asset.
-    Strictly maintains snake_case naming for database columns.
+    The internal column 'last_price' has been refactored to 'current_market_price'.
+    Strictly maintains 'asset_id' as the Primary Key.
     """
     __tablename__ = "financial_assets"
 
@@ -25,7 +26,7 @@ class FinancialAsset(Base):
         index=True, 
         nullable=False
     )
-    last_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    current_market_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
     last_updated: Mapped[datetime | None] = mapped_column(
         DateTime, 
