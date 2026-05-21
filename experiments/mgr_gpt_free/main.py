@@ -1,5 +1,11 @@
 """
 Main FastAPI application for Finance Track.
+
+Database layer:
+- snake_case
+
+API layer:
+- camelCase
 """
 
 from collections.abc import AsyncGenerator
@@ -9,6 +15,7 @@ from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Query
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,7 +43,7 @@ from utils import logger
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application lifespan handler.
+    Application startup lifecycle.
     """
     try:
         async with engine.begin() as conn:
@@ -62,12 +69,8 @@ async def lifespan(app: FastAPI):
                     )
                 )
 
-        logger.info(
-            "Application startup completed successfully."
-        )
-        logger.info(
-            "Primary key configuration verified: asset_id"
-        )
+        logger.info("Application startup completed")
+        logger.info("Primary key verified: asset_id")
 
         yield
 
@@ -76,8 +79,9 @@ async def lifespan(app: FastAPI):
             "Database initialization failed: %s",
             error,
         )
+
         raise DatabaseConnectionException(
-            detail="Database initialization failed.",
+            detail="Database initialization failed",
         ) from error
 
 
@@ -92,7 +96,7 @@ async def get_db() -> AsyncGenerator[
     None,
 ]:
     """
-    Provide asynchronous database session.
+    Database dependency provider.
     """
     async with AsyncSessionLocal() as session:
         yield session
@@ -100,14 +104,14 @@ async def get_db() -> AsyncGenerator[
 
 @app.exception_handler(FinanceException)
 async def finance_exception_handler(
-    request,
+    request: Request,
     exc: FinanceException,
 ):
     """
     Handle custom finance exceptions.
     """
     logger.error(
-        "Finance exception raised for asset_id operation: %s",
+        "Finance exception occurred: %s",
         exc.detail,
     )
 
@@ -121,14 +125,14 @@ async def finance_exception_handler(
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(
-    request,
+    request: Request,
     exc: HTTPException,
 ):
     """
     Handle HTTP exceptions.
     """
     logger.error(
-        "HTTP exception raised: %s",
+        "HTTP exception occurred: %s",
         exc.detail,
     )
 
@@ -146,8 +150,8 @@ async def root():
     Root endpoint.
     """
     return {
-        "message": "Finance Track API running",
-        "port": 8003,
+        "message": "Finance Track API",
+        "status": "running",
     }
 
 
@@ -167,18 +171,14 @@ async def status():
     response_model=list[FinancialAsset],
 )
 async def read_assets(
-    skip: int = Query(default=0, ge=0),
+    skip: int = Query(
+        default=0,
+        ge=0,
+    ),
     limit: int = Query(
         default=10,
         ge=1,
         le=100,
-    ),
-    min_price: float | None = Query(
-        default=None,
-        ge=0,
-    ),
-    sort_by: str = Query(
-        default="ticker_symbol",
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -189,13 +189,11 @@ async def read_assets(
         db=db,
         skip=skip,
         limit=limit,
-        min_price=min_price,
-        sort_by=sort_by,
     )
 
     if not assets:
         raise AssetNotFoundException(
-            detail="No financial assets found.",
+            detail="No assets found",
         )
 
     return assets
@@ -212,6 +210,8 @@ async def create_new_asset(
 ):
     """
     Create a new financial asset.
+
+    Request body accepts camelCase fields.
     """
     try:
         return await create_asset(
@@ -227,7 +227,7 @@ async def create_new_asset(
 
         raise HTTPException(
             status_code=500,
-            detail="Asset creation failed.",
+            detail="Asset creation failed",
         ) from error
 
 
@@ -240,7 +240,7 @@ async def get_asset(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve asset by ticker symbol.
+    Retrieve single asset by ticker symbol.
     """
     asset = await get_asset_by_ticker(
         db=db,
@@ -251,7 +251,7 @@ async def get_asset(
         raise AssetNotFoundException(
             detail=(
                 f"Asset with ticker "
-                f"{ticker_symbol} not found."
+                f"{ticker_symbol} not found"
             ),
         )
 
@@ -259,11 +259,11 @@ async def get_asset(
 
 
 @app.post("/assets/sync")
-async def sync_asset_prices(
+async def sync_assets(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Synchronize all asset prices.
+    Synchronize asset prices.
     """
     try:
         updated_assets = await update_all_assets_prices(
@@ -271,10 +271,8 @@ async def sync_asset_prices(
         )
 
         return {
-            "message": (
-                "Asset synchronization completed."
-            ),
-            "updated_assets": updated_assets,
+            "message": "Synchronization completed",
+            "updatedAssets": updated_assets,
         }
 
     except Exception as error:
@@ -285,7 +283,7 @@ async def sync_asset_prices(
 
         raise HTTPException(
             status_code=500,
-            detail="Synchronization failed.",
+            detail="Synchronization failed",
         ) from error
 
 
@@ -298,7 +296,7 @@ async def get_asset_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve analytics for a financial asset.
+    Retrieve analytics for asset.
     """
     asset = await get_asset_by_ticker(
         db=db,
@@ -307,10 +305,7 @@ async def get_asset_analytics(
 
     if asset is None:
         raise AssetNotFoundException(
-            detail=(
-                f"Asset with ticker "
-                f"{ticker_symbol} not found."
-            ),
+            detail="Asset not found",
         )
 
     historical_prices = await get_historical_data(
@@ -321,7 +316,7 @@ async def get_asset_analytics(
     if not historical_prices:
         raise HTTPException(
             status_code=503,
-            detail="Historical data unavailable.",
+            detail="Historical data unavailable",
         )
 
     moving_average = calculate_moving_average(

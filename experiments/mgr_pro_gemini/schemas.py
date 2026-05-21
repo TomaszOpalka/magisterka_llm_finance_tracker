@@ -1,35 +1,52 @@
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from typing import Optional
 from datetime import datetime
 
 class FinancialAssetBase(BaseModel):
-    """Base schema containing common financial asset attributes."""
+    """
+    Base schema defining the core attributes of a financial asset.
+    Uses Pydantic's ConfigDict and AliasGenerator to automatically map 
+    internal snake_case fields to external camelCase JSON keys for both 
+    inbound requests and outbound responses.
+    """
     ticker_symbol: str = Field(..., description="The unique stock ticker symbol")
     last_price: Optional[float] = Field(None, ge=0.0, description="Latest traded price")
     market_cap: Optional[float] = Field(None, ge=0.0, description="Total market capitalization")
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True, # Critical: Allows mapping inbound camelCase to internal snake_case
+        from_attributes=True
+    )
+
 class FinancialAssetCreate(FinancialAssetBase):
-    """Schema used for creating a new financial asset."""
+    """
+    Schema used for accepting incoming creation payloads (POST requests).
+    Inherits the alias_generator and populate_by_name from FinancialAssetBase,
+    meaning the client MUST send camelCase keys (e.g., {"tickerSymbol": "AAPL"}),
+    which Pydantic will internally map to ticker_symbol for the CRUD layer.
+    """
     pass
 
 class FinancialAsset(FinancialAssetBase):
     """
-    Complete Financial Asset schema representing database records.
-    Configured for ORM mode to seamlessly translate SQLAlchemy models.
+    Complete response schema including system-generated fields.
+    Automatically serializes asset_id to assetId and last_updated to lastUpdated.
     """
     asset_id: str = Field(..., description="Primary key identifier")
     last_updated: Optional[datetime] = Field(None, description="Timestamp of last data sync")
 
-    model_config = ConfigDict(from_attributes=True)
-
 class AssetAnalytics(BaseModel):
-    """Base schema for calculated technical indicators."""
+    """Base schema for technical indicators."""
     moving_average_30d: Optional[float] = Field(None, description="30-day Simple Moving Average")
     rsi_14: Optional[float] = Field(None, description="14-period Relative Strength Index")
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
+
 class AnalyticsResponse(AssetAnalytics):
-    """
-    Response schema for the analytics endpoint.
-    Inherits technical indicators from AssetAnalytics and adds the ticker symbol.
-    """
+    """Response schema combining technical indicators with the asset identifier."""
     ticker_symbol: str = Field(..., description="The specific stock ticker symbol")

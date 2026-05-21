@@ -65,11 +65,14 @@ async def get_asset_by_ticker(
 
 async def create_asset(
     db: AsyncSession,
-    asset_in: FinancialAssetCreate,
+    asset_in: FinancialAssetCreate | None = None,
+    asset: FinancialAssetCreate | None = None,
 ) -> FinancialAsset:
     """
     Create new financial asset.
     """
+    if asset_in is None:
+        asset_in = asset
     try:
         new_asset = FinancialAsset(
             asset_id=str(uuid4()),

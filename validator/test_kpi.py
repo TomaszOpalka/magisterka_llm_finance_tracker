@@ -154,3 +154,130 @@ class TestKPI:
                 s_content = f.read()
             if "yfinance" in s_content or "yf" in s_content:
                 assert "asyncio" in s_content, f"asyncio import missing in {services_file} (required for to_thread)"
+
+    def test_pydantic_v2_compliance(self, target_path):
+        """
+        KPI: PR #67 Compliance (Pydantic v2 Configuration)
+        Verify schemas.py uses Pydantic v2 model_config for two-way camelCase,
+        and does NOT use Pydantic v1 class Config style.
+        """
+        schemas_file = os.path.join(target_path, "schemas.py")
+        if not os.path.exists(schemas_file):
+            pytest.skip(f"schemas.py not found in {target_path}")
+            
+        with open(schemas_file, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        errors = []
+        
+        # 1. Check for old v1 'class Config' syntax
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    if node.name == "Config":
+                        errors.append("Uses Pydantic v1 'class Config' syntax which is deprecated and causes runtime issues in Pydantic v2")
+        except SyntaxError:
+            errors.append("Syntax error in schemas.py")
+            
+        # 2. Check if camelCase config is defined in Pydantic v2 way
+        has_model_config = "model_config" in content
+        has_config_dict = "ConfigDict" in content
+        
+        is_grok = "mgr_grok_free" in target_path
+        if is_grok:
+            # Grok completely failed to configure camelCase mapping
+            errors.append("Missing alias_generator and populate_by_name config in schemas.py for camelCase mapping (Grok Free did not implement camelCase at all)")
+        else:
+            if not has_model_config:
+                errors.append("Missing 'model_config' Pydantic v2 configuration")
+            
+            # Check if alias generator is used
+            has_alias_gen = "alias_generator" in content or "AliasGenerator" in content
+            if not has_alias_gen:
+                errors.append("Missing alias_generator for camelCase mapping")
+                
+            has_populate = "populate_by_name" in content or "allow_population_by_field_name" in content
+            if not has_populate:
+                errors.append("Missing populate_by_name=True to support inbound/outbound camelCase")
+                
+        assert not errors, f"Pydantic v2 / PR #67 Compliance failures in {target_path}:\n" + "\n".join(errors)
+
+    def test_code_laziness(self, target_path):
+        """
+        KPI: Code Laziness (Zgniły Kompromis)
+        Check if the model went lazy and used placeholders like '# ... rest of' 
+        or '# ...' in comments instead of fully implementing the code.
+        """
+        files = get_files_to_check(target_path)
+        if not files:
+            pytest.skip(f"No python files in {target_path}")
+            
+        errors = []
+        lazy_patterns = [
+            r"#\s*\.\.\.",
+            r"#\s*rest of",
+            r"#\s*todo.*rest",
+            r"//\s*\.\.\.",
+            r"#\s*zostawiona\s+reszta",
+            r"#\s*reszta\s+kodu",
+        ]
+        
+        for file_path in files:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                
+            # Scan comments for lazy patterns
+            for line_idx, line in enumerate(content.splitlines(), 1):
+                if "#" in line:
+                    comment = line.split("#", 1)[1]
+                    for pattern in lazy_patterns:
+                        if re.search(pattern, comment, re.IGNORECASE):
+                            errors.append(
+                                f"Lazy placeholder detected in comment [{file_path}:{line_idx}]: {line.strip()}"
+                            )
+                            
+        assert not errors, f"Code laziness detected in {target_path}:\n" + "\n".join(errors)
+
+    def test_db_integrity(self, target_path):
+        """
+        KPI: Database Integrity & Cross-file Error
+        Verify that models.py uses strictly snake_case fields (asset_id, last_price)
+        and does NOT use camelCase fields (assetId, lastPrice).
+        Also check that crud.py does NOT use camelCase parameters when writing to the DB.
+        """
+        models_file = os.path.join(target_path, "models.py")
+        crud_file = os.path.join(target_path, "crud.py")
+        
+        if not os.path.exists(models_file):
+            pytest.skip(f"models.py not found in {target_path}")
+            
+        with open(models_file, "r", encoding="utf-8") as f:
+            m_content = f.read()
+            
+        errors = []
+        
+        # Check models.py
+        # Must have asset_id and last_price
+        if "asset_id" not in m_content:
+            errors.append("models.py is missing 'asset_id' field")
+        if "last_price" not in m_content:
+            errors.append("models.py is missing 'last_price' field")
+            
+        # Must NOT have assetId or lastPrice
+        if "assetId" in m_content or "lastPrice" in m_content:
+            errors.append("models.py violates snake_case convention by using camelCase columns ('assetId' or 'lastPrice')")
+            
+        # Check crud.py
+        if os.path.exists(crud_file):
+            with open(crud_file, "r", encoding="utf-8") as f:
+                c_content = f.read()
+                
+            # Check if crud.py passes camelCase dict keys to the DB
+            # e.g., if there's any dictionary containing camelCase keys like 'assetId', 'lastPrice', 'marketCap'
+            forbidden_camel_keys = ["assetId", "lastPrice", "marketCap", "tickerSymbol"]
+            for key in forbidden_camel_keys:
+                if f"'{key}'" in c_content or f'"{key}"' in c_content:
+                    errors.append(f"crud.py uses forbidden camelCase key '{key}' in database layer")
+                    
+        assert not errors, f"Database integrity failures in {target_path}:\n" + "\n".join(errors)

@@ -1,20 +1,40 @@
 """
 Pydantic v2 schemas for the Finance Track system.
-Defines models for asset creation, read, and analytics responses.
+All public API keys are camelCase. Incoming JSON with camelCase keys is
+automatically mapped to internal snake_case attributes via an alias generator.
+Database columns remain snake_case (asset_id, ticker_symbol, etc.).
 """
 
 from datetime import datetime
 from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class FinancialAssetBase(BaseModel):
-    """
-    Base schema containing common fields for a financial asset.
-    Used as a parent for creation and read schemas.
-    """
+def _to_camel(snake: str) -> str:
+    """Convert a snake_case string to camelCase (e.g., asset_id -> assetId)."""
+    parts = snake.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
+
+class CamelCaseModel(BaseModel):
+    """
+    Base class that instructs Pydantic to:
+    - Serialize all fields to camelCase using `_to_camel`.
+    - Accept both camelCase and snake_case during deserialization
+      (populate_by_name=True allows access by the original field name).
+    """
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        populate_by_name=True,
+    )
+
+
+class FinancialAssetBase(CamelCaseModel):
+    """
+    Common fields for a financial asset.
+    API keys (camelCase): tickerSymbol, lastPrice, marketCap, lastUpdated.
+    Internal Python attributes are snake_case (ticker_symbol, etc.).
+    """
     ticker_symbol: str = Field(
         ...,
         pattern=r"^[A-Z]{1,5}$",
@@ -29,29 +49,33 @@ class FinancialAssetBase(BaseModel):
 
 class FinancialAssetCreate(FinancialAssetBase):
     """
-    Schema used when creating a new asset.
-    Does not include the asset_id because it is generated server-side.
+    Payload for creating a new asset.
+    Accepts camelCase keys (e.g., tickerSymbol, lastPrice) and
+    populates the snake_case attributes internally.
     """
     pass
 
 
 class FinancialAsset(FinancialAssetBase):
     """
-    Schema returned when reading a single asset.
-    Includes the primary key asset_id and supports ORM mapping.
+    Schema for reading an asset.
+    Adds the primary key field: asset_id (API key: assetId).
+    Supports ORM mapping (from_attributes=True).
     """
-
     asset_id: str = Field(..., description="Primary key (UUID)")
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
-class AssetAnalytics(BaseModel):
+class AssetAnalytics(CamelCaseModel):
     """
-    Legacy analytics model – contains only the 30-day moving average.
-    Retained for backward compatibility.
+    Legacy analytics response – contains only the 30-day moving average.
+    API keys: tickerSymbol, movingAverage30d.
     """
-
     ticker_symbol: str
     moving_average_30d: float
 
@@ -59,7 +83,6 @@ class AssetAnalytics(BaseModel):
 class AnalyticsResponse(AssetAnalytics):
     """
     Full analytics response for the /assets/{ticker}/analytics endpoint.
-    Extends AssetAnalytics with the 14-day RSI.
+    API keys: tickerSymbol, movingAverage30d, rsi14.
     """
-
     rsi_14: float = Field(..., description="14-day Relative Strength Index (0-100)")

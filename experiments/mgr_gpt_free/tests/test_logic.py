@@ -88,7 +88,7 @@ async def test_create_and_get_asset(
     Integration test for asset creation and retrieval.
     """
     payload = {
-        "ticker_symbol": "AAPL",
+        "ticker_symbol": "MSFT",
         "last_price": 150.0,
         "market_cap": 3000000000000,
         "last_updated": None,
@@ -104,20 +104,20 @@ async def test_create_and_get_asset(
 
     created_asset = create_response.json()
 
-    assert created_asset["ticker_symbol"] == "AAPL"
-    assert created_asset["asset_id"] is not None
-    assert created_asset["last_price"] == 150.0
+    assert created_asset["tickerSymbol"] == "MSFT"
+    assert created_asset["assetId"] is not None
+    assert created_asset["lastPrice"] == 150.0
 
     # Retrieve asset
     get_response = await client.get(
-        "/assets/AAPL",
+        "/assets/MSFT",
     )
 
     assert get_response.status_code == 200
 
     retrieved_asset = get_response.json()
 
-    assert retrieved_asset["ticker_symbol"] == "AAPL"
-    assert retrieved_asset["asset_id"] == (
-        created_asset["asset_id"]
+    assert retrieved_asset["tickerSymbol"] == "MSFT"
+    assert retrieved_asset["assetId"] == (
+        created_asset["assetId"]
     )
