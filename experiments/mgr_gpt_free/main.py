@@ -1,192 +1,335 @@
 """
-Finance Track - Main FastAPI application.
+Main FastAPI application for Finance Track.
 
-Architecture:
-- Database layer: snake_case (SQLAlchemy)
-- API layer: camelCase (Pydantic aliasing)
+Database layer:
+- snake_case
+
+API layer:
+- camelCase
 """
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends
+from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from analytics import calculate_moving_average, calculate_rsi
+from analytics import calculate_moving_average
+from analytics import calculate_rsi
 from config import settings
-from crud import (
-    create_asset,
-    get_asset_by_ticker,
-    get_assets,
-    update_all_assets_prices,
-)
-from database import AsyncSessionLocal, engine
-from exceptions import (
-    AssetNotFoundException,
-    DatabaseConnectionException,
-    FinanceException,
-)
+from crud import create_asset
+from crud import get_asset_by_ticker
+from crud import get_assets
+from crud import update_all_assets_prices
+from database import AsyncSessionLocal
+from database import engine
+from exceptions import AssetNotFoundException
+from exceptions import DatabaseConnectionException
+from exceptions import FinanceException
 from models import Base
-from schemas import (
-    AnalyticsResponse,
-    FinancialAsset,
-    FinancialAssetCreate,
-)
+from schemas import AnalyticsResponse
+from schemas import FinancialAsset
+from schemas import FinancialAssetCreate
 from services import get_historical_data
 from utils import logger
 
 
-# =========================
-# Lifespan
-# =========================
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application startup and shutdown lifecycle.
+    Application startup lifecycle.
     """
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-            result = await conn.execute(text("PRAGMA table_info(financial_assets)"))
+            result = await conn.execute(
+                text(
+                    """
+                    PRAGMA table_info(financial_assets)
+                    """
+                )
+            )
+
             columns = [row[1] for row in result.fetchall()]
 
             if "last_updated" not in columns:
                 await conn.execute(
                     text(
-                        "ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME"
+                        """
+                        ALTER TABLE financial_assets
+                        ADD COLUMN last_updated DATETIME
+                        """
                     )
                 )
 
-        logger.info("Application started successfully")
-        logger.info("Database initialized with assetId primary key")
+        logger.info("Application startup completed")
+        logger.info("Primary key verified: asset_id")
 
         yield
 
-    except Exception as e:
-        logger.error("Startup failure: %s", e)
-        raise DatabaseConnectionException("Database init failed") from e
+    except Exception as error:
+        logger.error(
+            "Database initialization failed: %s",
+            error,
+        )
+
+        raise DatabaseConnectionException(
+            detail="Database initialization failed",
+        ) from error
 
 
-app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+app = FastAPI(
+    title=settings.APP_NAME,
+    lifespan=lifespan,
+)
 
 
-# =========================
-# DB Dependency
-# =========================
-
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[
+    AsyncSession,
+    None,
+]:
+    """
+    Database dependency provider.
+    """
     async with AsyncSessionLocal() as session:
         yield session
 
 
-# =========================
-# Exception Handlers
-# =========================
-
 @app.exception_handler(FinanceException)
-async def finance_exception_handler(request: Request, exc: FinanceException):
-    logger.error("Finance error: %s", exc.detail)
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+async def finance_exception_handler(
+    request: Request,
+    exc: FinanceException,
+):
+    """
+    Handle custom finance exceptions.
+    """
+    logger.error(
+        "Finance exception occurred: %s",
+        exc.detail,
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+        },
+    )
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.error("HTTP error: %s", exc.detail)
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+async def http_exception_handler(
+    request: Request,
+    exc: HTTPException,
+):
+    """
+    Handle HTTP exceptions.
+    """
+    logger.error(
+        "HTTP exception occurred: %s",
+        exc.detail,
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+        },
+    )
 
 
-# =========================
-# Healthcheck
-# =========================
+@app.get("/")
+async def root():
+    """
+    Root endpoint.
+    """
+    return {
+        "message": "Finance Track API",
+        "status": "running",
+    }
+
 
 @app.get("/status")
 async def status():
-    return {"status": "ok", "database": "connected"}
+    """
+    Healthcheck endpoint.
+    """
+    return {
+        "status": "ok",
+        "database": "connected",
+    }
 
 
-# =========================
-# Assets CRUD
-# =========================
-
-@app.get("/assets", response_model=list[FinancialAsset])
+@app.get(
+    "/assets",
+    response_model=list[FinancialAsset],
+)
 async def read_assets(
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=10, le=100),
+    skip: int = Query(
+        default=0,
+        ge=0,
+    ),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    assets = await get_assets(db=db, skip=skip, limit=limit)
+    """
+    Retrieve all assets.
+    """
+    assets = await get_assets(
+        db=db,
+        skip=skip,
+        limit=limit,
+    )
 
     if not assets:
-        raise AssetNotFoundException("No assets found")
+        raise AssetNotFoundException(
+            detail="No assets found",
+        )
 
     return assets
 
 
-@app.post("/assets", response_model=FinancialAsset, status_code=201)
+@app.post(
+    "/assets",
+    response_model=FinancialAsset,
+    status_code=201,
+)
 async def create_new_asset(
     asset: FinancialAssetCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    return await create_asset(db=db, asset=asset)
+    """
+    Create a new financial asset.
+
+    Request body accepts camelCase fields.
+    """
+    try:
+        return await create_asset(
+            db=db,
+            asset=asset,
+        )
+
+    except Exception as error:
+        logger.error(
+            "Asset creation failed: %s",
+            error,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Asset creation failed",
+        ) from error
 
 
-@app.get("/assets/{ticker_symbol}", response_model=FinancialAsset)
-async def get_asset(ticker_symbol: str, db: AsyncSession = Depends(get_db)):
-    asset = await get_asset_by_ticker(db=db, ticker_symbol=ticker_symbol)
+@app.get(
+    "/assets/{ticker_symbol}",
+    response_model=FinancialAsset,
+)
+async def get_asset(
+    ticker_symbol: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retrieve single asset by ticker symbol.
+    """
+    asset = await get_asset_by_ticker(
+        db=db,
+        ticker_symbol=ticker_symbol,
+    )
 
-    if not asset:
-        raise AssetNotFoundException(f"Asset {ticker_symbol} not found")
+    if asset is None:
+        raise AssetNotFoundException(
+            detail=(
+                f"Asset with ticker "
+                f"{ticker_symbol} not found"
+            ),
+        )
 
     return asset
 
 
-# =========================
-# Sync prices (yfinance)
-# =========================
-
 @app.post("/assets/sync")
-async def sync_assets(db: AsyncSession = Depends(get_db)):
+async def sync_assets(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Synchronize asset prices.
+    """
     try:
-        updated = await update_all_assets_prices(db=db)
+        updated_assets = await update_all_assets_prices(
+            db=db,
+        )
 
         return {
-            "message": "Sync completed",
-            "updated_assets": updated,
+            "message": "Synchronization completed",
+            "updatedAssets": updated_assets,
         }
 
-    except Exception as e:
-        logger.error("Sync failed: %s", e)
-        raise HTTPException(status_code=500, detail="Sync failed")
+    except Exception as error:
+        logger.error(
+            "Synchronization failed: %s",
+            error,
+        )
 
+        raise HTTPException(
+            status_code=500,
+            detail="Synchronization failed",
+        ) from error
 
-# =========================
-# Analytics endpoint
-# =========================
 
 @app.get(
     "/assets/{ticker_symbol}/analytics",
     response_model=AnalyticsResponse,
 )
-async def analytics(
+async def get_asset_analytics(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
-    asset = await get_asset_by_ticker(db, ticker_symbol)
+    """
+    Retrieve analytics for asset.
+    """
+    asset = await get_asset_by_ticker(
+        db=db,
+        ticker_symbol=ticker_symbol,
+    )
 
-    if not asset:
-        raise AssetNotFoundException("Asset not found")
+    if asset is None:
+        raise AssetNotFoundException(
+            detail="Asset not found",
+        )
 
-    history = await get_historical_data(ticker_symbol, days=30)
+    historical_prices = await get_historical_data(
+        ticker=ticker_symbol,
+        days=30,
+    )
 
-    if not history:
-        raise HTTPException(status_code=503, detail="No market data")
+    if not historical_prices:
+        raise HTTPException(
+            status_code=503,
+            detail="Historical data unavailable",
+        )
+
+    moving_average = calculate_moving_average(
+        historical_prices,
+    )
+
+    rsi_value = calculate_rsi(
+        historical_prices,
+        periods=14,
+    )
 
     return AnalyticsResponse(
         ticker_symbol=ticker_symbol,
-        moving_average_30d=calculate_moving_average(history),
-        rsi_14=calculate_rsi(history),
+        moving_average_30d=moving_average,
+        rsi_14=rsi_value,
     )

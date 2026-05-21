@@ -7,7 +7,8 @@ class FinancialAssetBase(BaseModel):
     """
     Base schema defining the core attributes of a financial asset.
     Uses Pydantic's ConfigDict and AliasGenerator to automatically map 
-    internal snake_case fields to external camelCase JSON keys.
+    internal snake_case fields to external camelCase JSON keys for both 
+    inbound requests and outbound responses.
     """
     ticker_symbol: str = Field(..., description="The unique stock ticker symbol")
     last_price: Optional[float] = Field(None, ge=0.0, description="Latest traded price")
@@ -15,12 +16,17 @@ class FinancialAssetBase(BaseModel):
 
     model_config = ConfigDict(
         alias_generator=to_camel,
-        populate_by_name=True,
+        populate_by_name=True, # Critical: Allows mapping inbound camelCase to internal snake_case
         from_attributes=True
     )
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """Schema used for accepting incoming creation payloads."""
+    """
+    Schema used for accepting incoming creation payloads (POST requests).
+    Inherits the alias_generator and populate_by_name from FinancialAssetBase,
+    meaning the client MUST send camelCase keys (e.g., {"tickerSymbol": "AAPL"}),
+    which Pydantic will internally map to ticker_symbol for the CRUD layer.
+    """
     pass
 
 class FinancialAsset(FinancialAssetBase):

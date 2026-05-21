@@ -1,17 +1,23 @@
 """
-Pydantic schemas for Finance Track (API layer uses camelCase).
+Pydantic schemas for Finance Track.
+
+API layer uses camelCase.
+Database layer remains snake_case.
 """
 
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, AliasGenerator
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
 from pydantic.alias_generators import to_camel
 
 
-class CamelModel(BaseModel):
+class CamelCaseModel(BaseModel):
     """
-    Base model enabling automatic camelCase serialization.
+    Base schema enabling automatic camelCase conversion
+    for both request and response payloads.
     """
 
     model_config = ConfigDict(
@@ -31,48 +37,54 @@ TickerSymbol = Annotated[
 ]
 
 
-class FinancialAssetBase(CamelModel):
+class FinancialAssetBase(CamelCaseModel):
     """
-    Base schema for financial asset API layer.
+    Base financial asset schema.
     """
 
     ticker_symbol: TickerSymbol
     last_price: float = Field(ge=0)
     market_cap: int = Field(ge=0)
-    last_updated: Optional[datetime] = None
+    last_updated: datetime | None = None
 
 
 class FinancialAssetCreate(FinancialAssetBase):
     """
-    Schema used for asset creation requests.
+    Schema used for inbound asset creation payloads.
+
+    Accepted JSON example:
+
+    {
+        "tickerSymbol": "AAPL",
+        "lastPrice": 120.5,
+        "marketCap": 1000000000
+    }
     """
 
 
-class FinancialAsset(CamelModel):
+class FinancialAsset(CamelCaseModel):
     """
-    Schema used for asset responses.
+    Schema used for outbound asset responses.
     """
 
-    asset_id: str = Field(
-        serialization_alias="assetId",
-    )
+    asset_id: str
     ticker_symbol: TickerSymbol
     last_price: float
     market_cap: int
-    last_updated: Optional[datetime] = None
+    last_updated: datetime | None = None
 
 
-class AssetAnalytics(CamelModel):
+class AssetAnalytics(CamelCaseModel):
     """
-    Schema for analytics response.
+    Schema for analytics response payload.
     """
 
     ticker_symbol: str
-    moving_average_30d: Optional[float]
-    rsi_14: Optional[float]
+    moving_average_30d: float | None
+    rsi_14: float | None
 
 
 class AnalyticsResponse(AssetAnalytics):
     """
-    Final analytics API response schema.
+    Final analytics response schema.
     """

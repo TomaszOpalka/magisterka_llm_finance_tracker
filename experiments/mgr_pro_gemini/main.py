@@ -77,10 +77,8 @@ async def read_assets(
 ):
     """
     Fetches a paginated list of assets. 
-    Notice the query parameters accept camelCase (minPrice, sortBy).
-    We map the frontend 'sortBy' value back to internal snake_case for the database query.
+    Query parameters accept camelCase (minPrice, sortBy).
     """
-    # Map API camelCase sort parameter back to database snake_case column
     sort_mapping = {
         "assetId": "asset_id",
         "tickerSymbol": "ticker_symbol",
@@ -91,7 +89,6 @@ async def read_assets(
     db_sort_by = sort_mapping.get(sortBy, "ticker_symbol")
 
     try:
-        # Pass mapped snake_case parameter to CRUD layer
         assets = await crud.get_assets(db, skip, limit, minPrice, db_sort_by)
     except Exception as e:
         logger.error(f"Database read failure: {e}")
@@ -111,8 +108,14 @@ async def read_asset_by_ticker(tickerSymbol: str, db: AsyncSession = Depends(get
 
 @app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
-    """Registers a new asset. Accepts camelCase JSON payload."""
+    """
+    Registers a new asset.
+    The payload MUST be provided in camelCase (e.g., tickerSymbol).
+    Pydantic will automatically map it to the internal snake_case schema.
+    """
     try:
+        # The 'asset' object here already has internal attributes mapped as snake_case
+        # (e.g., asset.ticker_symbol), so crud.create_asset requires zero modifications.
         return await crud.create_asset(db, asset)
     except IntegrityError:
         await db.rollback()
@@ -126,8 +129,6 @@ async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depe
 async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
     try:
         results = await crud.update_all_assets_prices(db)
-        # Note: Response keys defined directly here are standard Python dicts, 
-        # but sticking to camelCase for the API standard.
         return {"detail": f"Update processed successfully. Records updated: {results['updated']}", "failedTickers": results['failed']}
     except Exception as e:
         logger.error(f"Batch synchronization failed: {e}")

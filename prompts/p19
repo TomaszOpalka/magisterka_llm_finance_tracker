@@ -1,0 +1,21 @@
+"We are advancing Pull Request #67 and moving into the system hardening phase. The application must now accept input data from clients strictly in camelCase, while keeping the internal database layout strictly in snake_case. Everything in the code must be in English. Explain your logic in Polish under the code block.
+
+TASK: Inbound camelCase Mapping & Documentation alignment
+
+schemas.py (Inbound Refactor):
+
+Configure your Pydantic v2 models (specifically FinancialAssetCreate or any payload schemas) so that they accept inbound JSON data with camelCase keys (e.g., tickerSymbol, lastPrice, marketCap).
+
+Ensure that Pydantic properly populates the internal attributes so crud.py can read them without modification. Hint: Look into Pydantic's model_config with populate_by_name=True and an appropriate alias_generator.
+
+main.py (Endpoint & Docs Check):
+
+Review the POST /assets endpoint. It must now accept the payload in camelCase.
+
+Ensure that FastAPI's auto-generated OpenAPI documentation (Swagger) correctly displays all request bodies and response schemas using camelCase fields only. No snake_case should be exposed to the public API contract.
+
+Strict Enforcement:
+
+NO CODE LAZINESS: Do not use placeholders. Provide complete, unmodified source code for schemas.py and main.py.
+
+PRIMARY KEY: The API field must expose assetId, while the database column remains asset_id. Do not fallback to standard 'id'."
