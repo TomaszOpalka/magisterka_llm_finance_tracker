@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Track | Cosmic UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Cosmic UI Custom Properties */
+        body {
+            background: linear-gradient(135deg, #020005 0%, #0a041c 50%, #051024 100%);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        
+        .neon-text-cyan {
+            color: #22d3ee;
+            text-shadow: 0 0 8px rgba(34, 211, 238, 0.6), 0 0 20px rgba(34, 211, 238, 0.4);
+        }
+
+        .neon-text-purple {
+            color: #c084fc;
+            text-shadow: 0 0 8px rgba(192, 132, 252, 0.6);
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(139, 92, 246, 0.05);
+        }
+
+        .neon-btn {
+            background: linear-gradient(90deg, #6d28d9, #4338ca);
+            border: 1px solid #8b5cf6;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .neon-btn:hover {
+            box-shadow: 0 0 25px rgba(34, 211, 238, 0.7);
+            border-color: #22d3ee;
+            transform: translateY(-2px);
+        }
+
+        /* Spinner Animation */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #22d3ee;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Table specific styles */
+        th {
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        
+        tr {
+            transition: background-color 0.2s;
+        }
+        
+        tr:hover td {
+            background-color: rgba(139, 92, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="p-8">
+
+    <div class="max-w-6xl mx-auto space-y-8">
+        
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-extrabold tracking-tight neon-text-cyan">Finance Track</h1>
+                <p class="text-gray-400 mt-2 text-sm tracking-widest uppercase">System Control Dashboard</p>
+            </div>
+            
+            <div class="glass-panel px-6 py-4 rounded-xl flex space-x-8">
+                <div class="flex flex-col items-center">
+                    <span class="text-xs text-gray-400 uppercase">System Status</span>
+                    <span class="text-lg font-bold text-green-400 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Online
+                    </span>
+                </div>
+                <div class="w-px bg-gray-700"></div>
+                <div class="flex flex-col items-center">
+                    <span class="text-xs text-gray-400 uppercase">Tracked Assets</span>
+                    <span class="text-lg font-bold neon-text-purple" id="asset-count">0</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="glass-panel rounded-2xl overflow-hidden p-1">
+            
+            <div class="flex justify-between items-center p-6 border-b border-gray-800">
+                <h2 class="text-xl font-semibold text-gray-200">Market Data</h2>
+                
+                <button id="sync-btn" class="neon-btn text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-3">
+                    <span id="sync-text">Synchronize Prices</span>
+                    <div id="sync-spinner" class="spinner"></div>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-900/50 text-cyan-500 border-b border-gray-800">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold">Ticker Symbol</th>
+                            <th class="px-6 py-4 font-semibold">Current Price (lastPrice)</th>
+                            <th class="px-6 py-4 font-semibold">Market Cap</th>
+                            <th class="px-6 py-4 font-semibold">System ID (assetId)</th>
+                            <th class="px-6 py-4 font-semibold">Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-gray-800/50 text-gray-300">
+                        </tbody>
+                </table>
+                
+                <div id="empty-state" class="text-center py-12 hidden">
+                    <p class="text-gray-500">No assets tracked in the database.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const tableBody = document.getElementById('table-body');
+        const emptyState = document.getElementById('empty-state');
+        const assetCount = document.getElementById('asset-count');
+        const syncBtn = document.getElementById('sync-btn');
+        const syncText = document.getElementById('sync-text');
+        const syncSpinner = document.getElementById('sync-spinner');
+
+        // Number formatter for Market Cap
+        const currencyFormatter = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0
+        });
+
+        // Date Formatter
+        const dateFormatter = new Intl.DateTimeFormat('en-US', {
+            dateStyle: 'medium',
+            timeStyle: 'medium'
+        });
+
+        async function fetchAssets() {
+            try {
+                // Testing the PR #67 camelCase API contract
+                const response = await fetch('/assets?sortBy=marketCap');
+                
+                if (response.status === 404) {
+                    tableBody.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    assetCount.textContent = '0';
+                    return;
+                }
+
+                if (!response.ok) throw new Error('Failed to fetch data');
+
+                const data = await response.json();
+                
+                tableBody.innerHTML = '';
+                emptyState.classList.add('hidden');
+                assetCount.textContent = data.length;
+
+                data.forEach(asset => {
+                    const row = document.createElement('tr');
+                    
+                    // Note: Strict adherence to camelCase API contract (lastPrice, assetId, etc.)
+                    const priceDisplay = asset.lastPrice !== null ? `$${asset.lastPrice.toFixed(2)}` : '<span class="text-gray-600">Pending</span>';
+                    const capDisplay = asset.marketCap ? currencyFormatter.format(asset.marketCap) : 'N/A';
+                    const dateDisplay = asset.lastUpdated ? dateFormatter.format(new Date(asset.lastUpdated)) : 'Never';
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 font-bold text-white">${asset.tickerSymbol}</td>
+                        <td class="px-6 py-4 text-green-400 font-mono">${priceDisplay}</td>
+                        <td class="px-6 py-4 text-gray-300">${capDisplay}</td>
+                        <td class="px-6 py-4 text-xs text-gray-500 font-mono">${asset.assetId}</td>
+                        <td class="px-6 py-4 text-xs text-gray-400">${dateDisplay}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+            } catch (error) {
+                console.error("Error loading assets:", error);
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `<p class="text-red-400">Connection error: Unable to load market data.</p>`;
+            }
+        }
+
+        async function synchronizePrices() {
+            // UI State change
+            syncBtn.disabled = true;
+            syncText.textContent = "Syncing...";
+            syncSpinner.style.display = "block";
+            syncBtn.style.opacity = "0.7";
+
+            try {
+                const response = await fetch('/assets/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(result.detail);
+                    await fetchAssets(); // Reload data immediately
+                } else {
+                    console.error("Sync failed", await response.text());
+                }
+            } catch (error) {
+                console.error("Network error during sync:", error);
+            } finally {
+                // UI State restore
+                syncBtn.disabled = false;
+                syncText.textContent = "Synchronize Prices";
+                syncSpinner.style.display = "none";
+                syncBtn.style.opacity = "1";
+            }
+        }
+
+        // Event Listeners
+        syncBtn.addEventListener('click', synchronizePrices);
+
+        // Initial Load
+        fetchAssets();
+    </script>
+</body>
+</html>

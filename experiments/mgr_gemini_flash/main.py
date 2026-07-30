@@ -8,12 +8,13 @@ from utils import logger
 from exceptions import FinanceException, AssetNotFoundException
 
 from fastapi import FastAPI, Depends, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from contextlib import asynccontextmanager
 from typing import List, Optional, AsyncGenerator
+import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,7 +22,7 @@ async def lifespan(app: FastAPI):
     Manages operational lifespans. Initializes base tables and performs 
     migrations while preserving snake_case parameters natively.
     """
-    logger.info("Initializing Finance Track Services - Inbound/Outbound camelCase active.")
+    logger.info("Initializing Finance Track Services - Production OpenAPI & Cosmic UI Active.")
     await init_db()
     
     async with engine.begin() as conn:
@@ -42,8 +43,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Finance Track API",
-    version="4.1.0",
-    description="Production-hardened API executing inbound and outbound camelCase parameter resolution.",
+    version="1.0.0",
+    description="High-performance async financial research engine built with FastAPI, SQLAlchemy 2.0, and Pydantic v2. Exposes strict camelCase JSON schemas for public integration while retaining decoupled snake_case storage models.",
     lifespan=lifespan
 )
 
@@ -83,13 +84,22 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session
 
-# --- Interface Core Endpoints ---
+# --- Interface Core Endpoints & Frontend ---
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def render_dashboard():
+    """Serves the Cosmic UI Single Page Application."""
+    dashboard_path = os.path.join("templates", "dashboard.html")
+    if os.path.exists(dashboard_path):
+        with open(dashboard_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>Cosmic UI Dashboard template not found. Ensure templates/dashboard.html exists.</h1>", status_code=404)
 
 @app.get("/status", tags=["System"])
 async def get_status():
     return {
         "status": "online",
-        "apiVersion": "4.1.0",
+        "apiVersion": "1.0.0",
         "primaryKeyContract": "assetId"
     }
 

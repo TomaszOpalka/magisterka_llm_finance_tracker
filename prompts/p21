@@ -1,0 +1,31 @@
+"We are executing the absolute final phase of the 'Finance Track' project. The backend architecture and database mutation tests under Pull Request #67 are fully completed, stable, and verified. Now, we must deliver the presentation layer and public interface contract. Everything in the code must be in English. Explain your implementation in Polish under the code block.
+
+TASK: Production OpenAPI Specifications & 'Cosmic UI' Dashboard
+
+main.py (API Metadata & OpenAPI Hardening):
+
+Configure the FastAPI application instance with production-grade metadata: Title ('Finance Track API'), Version ('1.0.0'), and a detailed description highlighting the async architecture and PR #67 camelCase contract.
+
+Explicitly ensure that the automatically generated /openapi.json and /docs (Swagger UI) strictly expose models in camelCase only (using assetId, tickerSymbol, currentMarketPrice, marketCap, lastUpdated).
+
+templates/dashboard.html (The Cosmic UI):
+
+Create a stunning, responsive Single Page Application (SPA) dashboard embedded directly via FastAPI's HTMLResponse.
+
+Use Tailwind CSS via CDN to build a premium dark-themed interface styled as 'Cosmic UI' (deep space gradients, neon cyan and purple accents, futuristic typography).
+
+Use vanilla JavaScript (fetch) to call your backend endpoints (GET /assets and POST /assets/sync).
+
+The UI must feature:
+
+A top stats bar displaying system status and total tracked assets.
+
+A clean, interactive data table displaying the assets with their currentMarketPrice and formatted marketCap.
+
+A glowing neon button to trigger the mass synchronization (/assets/sync) with a loading spinner animation.
+
+Strict Enforcement:
+
+NO CODE LAZINESS: Do not use placeholders, comments like '// rest of HTML', or partial configurations. Provide the COMPLETE, copy-pasteable updated code for main.py and the entire dashboard.html.
+
+CONTRACT COMPLIANCE: Ensure that the database still uses asset_id and current_market_price internally, while the frontend and OpenAPI specs communicate strictly via assetId and lastPrice (or your preserved camelCase alias)."

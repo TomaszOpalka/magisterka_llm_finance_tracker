@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Track • Cosmic UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;500&display=swap');
+        body { font-family: 'Inter', sans-serif; background: radial-gradient(ellipse at 20% 50%, #0a0f1e, #02040a); }
+        .cosmic-card { background: rgba(16, 20, 35, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(0, 255, 255, 0.15); }
+        .neon-glow { box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(128, 0, 255, 0.2); }
+        .neon-text { text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); }
+        .btn-sync { background: linear-gradient(135deg, #0ff, #a855f7); box-shadow: 0 0 25px rgba(0, 255, 255, 0.5); transition: all 0.3s ease; }
+        .btn-sync:hover { box-shadow: 0 0 40px rgba(0, 255, 255, 0.8); transform: scale(1.02); }
+        .spinner { border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid cyan; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen text-gray-100">
+
+    <!-- Header -->
+    <header class="py-6 px-8 flex items-center justify-between border-b border-cyan-900/40">
+        <h1 class="text-3xl font-bold font-['Orbitron'] neon-text text-cyan-300 tracking-widest">FINANCE TRACK</h1>
+        <span class="text-sm uppercase tracking-wide text-purple-300">Cosmic UI v1.0</span>
+    </header>
+
+    <!-- Stats Bar -->
+    <section class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="cosmic-card rounded-2xl p-6 flex flex-col items-center justify-center">
+            <span class="text-sm uppercase tracking-wider text-cyan-400">System Status</span>
+            <span id="statusIndicator" class="mt-2 text-2xl font-bold text-green-400">● Online</span>
+        </div>
+        <div class="cosmic-card rounded-2xl p-6 flex flex-col items-center justify-center">
+            <span class="text-sm uppercase tracking-wider text-cyan-400">Tracked Assets</span>
+            <span id="totalAssets" class="mt-2 text-4xl font-bold text-white">0</span>
+        </div>
+        <div class="cosmic-card rounded-2xl p-6 flex items-center justify-center">
+            <button id="syncBtn" onclick="triggerSync()" class="btn-sync px-8 py-3 rounded-full font-semibold text-gray-900 flex items-center gap-3">
+                <span id="syncText">🔄 Sync Prices</span>
+                <span id="spinner" class="spinner hidden"></span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Assets Table -->
+    <section class="max-w-7xl mx-auto px-6 pb-12">
+        <div class="cosmic-card rounded-2xl overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-cyan-900/20 text-cyan-300 uppercase text-xs tracking-widest">
+                    <tr>
+                        <th class="px-6 py-4">Ticker</th>
+                        <th class="px-6 py-4">Last Price</th>
+                        <th class="px-6 py-4">Market Cap</th>
+                        <th class="px-6 py-4">Updated</th>
+                    </tr>
+                </thead>
+                <tbody id="assetTableBody" class="divide-y divide-gray-800">
+                    <!-- Rows injected by JavaScript -->
+                </tbody>
+            </table>
+            <div id="emptyState" class="text-center py-12 text-gray-500">Loading assets…</div>
+        </div>
+    </section>
+
+    <script>
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/status');
+                const data = await res.json();
+                document.getElementById('statusIndicator').textContent = data.status === 'ok' ? '● Online' : '● Degraded';
+            } catch (e) {
+                document.getElementById('statusIndicator').textContent = '● Offline';
+                document.getElementById('statusIndicator').classList.add('text-red-400');
+            }
+        }
+
+        function formatMarketCap(value) {
+            if (!value) return 'N/A';
+            if (value >= 1e12) return (value / 1e12).toFixed(2) + ' T';
+            if (value >= 1e9) return (value / 1e9).toFixed(2) + ' B';
+            if (value >= 1e6) return (value / 1e6).toFixed(2) + ' M';
+            return value.toLocaleString();
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            return date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        async function loadAssets() {
+            const res = await fetch('/assets?limit=100');
+            const assets = await res.json();
+            document.getElementById('totalAssets').textContent = assets.length;
+            const tbody = document.getElementById('assetTableBody');
+            const empty = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+            if (assets.length === 0) {
+                empty.classList.remove('hidden');
+                empty.textContent = 'No assets found. Add some via POST /assets.';
+            } else {
+                empty.classList.add('hidden');
+                assets.forEach(asset => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-cyan-900/10 transition-colors';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 font-medium text-cyan-200">${asset.tickerSymbol}</td>
+                        <td class="px-6 py-4 text-purple-200">$${asset.lastPrice.toFixed(2)}</td>
+                        <td class="px-6 py-4">${formatMarketCap(asset.marketCap)}</td>
+                        <td class="px-6 py-4 text-sm text-gray-400">${formatDate(asset.lastUpdated)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function triggerSync() {
+            const btn = document.getElementById('syncBtn');
+            const text = document.getElementById('syncText');
+            const spinner = document.getElementById('spinner');
+            btn.disabled = true;
+            text.textContent = 'Syncing...';
+            spinner.classList.remove('hidden');
+            try {
+                const res = await fetch('/assets/sync', { method: 'POST' });
+                const result = await res.json();
+                alert(`Sync complete: ${result.updated} updated, ${result.skipped} skipped, ${result.failed} failed.`);
+            } catch (e) {
+                alert('Sync failed. Check logs.');
+            } finally {
+                btn.disabled = false;
+                text.textContent = '🔄 Sync Prices';
+                spinner.classList.add('hidden');
+                await loadAssets(); // Refresh table
+            }
+        }
+
+        // Initial load
+        (async () => {
+            await fetchStatus();
+            await loadAssets();
+        })();
+    </script>
+</body>
+</html>

@@ -1,9 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional, AsyncGenerator
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, Request, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
@@ -21,7 +22,7 @@ logger = logging.getLogger("finance_track")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager handling database initialization."""
+    """Lifecycle manager handling database initialization and validation."""
     logger.info("Initializing database with schema validation.")
     
     async with engine.begin() as conn:
@@ -40,7 +41,29 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
     logger.info("Database connections terminated cleanly.")
 
-app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+
+# --- PRODUCTION OPENAPI METADATA ---
+api_description = """
+### High-Performance Asynchronous Financial Tracking API
+Welcome to the core backend of **Finance Track**.
+
+#### Architecture Highlights:
+* **Fully Asynchronous:** Utilizes `asyncio`, `httpx`, and `aiosqlite` for non-blocking I/O.
+* **PR #67 Compliance:** Strict separation of internal database layout (snake_case) and public API contract (camelCase).
+* **Data Hardening:** Pydantic v2 schemas rigorously validate inbound and outbound payloads.
+* **Cosmic UI Integration:** Supports an embedded SPA dashboard for real-time market monitoring.
+"""
+
+app = FastAPI(
+    title="Finance Track API",
+    version="1.0.0",
+    description=api_description,
+    lifespan=lifespan,
+    contact={
+        "name": "Finance Track Engineering",
+        "email": "engineering@financetrack.local",
+    }
+)
 
 @app.exception_handler(exceptions.FinanceException)
 async def finance_exception_handler(request: Request, exc: exceptions.FinanceException):
@@ -63,11 +86,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         finally:
             await session.close()
 
-@app.get("/status")
+
+# --- FRONTEND DASHBOARD ---
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def render_dashboard():
+    """Serves the Cosmic UI Single Page Application."""
+    template_path = Path("templates/dashboard.html")
+    if not template_path.exists():
+        return HTMLResponse("<h1>Error: Dashboard template not found. Please create templates/dashboard.html</h1>", status_code=404)
+    
+    with open(template_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content, status_code=200)
+
+
+# --- API ENDPOINTS ---
+@app.get("/status", tags=["System"])
 async def healthcheck():
     return {"status": "ok", "service": settings.APP_NAME}
 
-@app.get("/assets", response_model=List[schemas.FinancialAsset])
+@app.get("/assets", response_model=List[schemas.FinancialAsset], tags=["Assets"])
 async def read_assets(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
@@ -75,7 +113,7 @@ async def read_assets(
     sortBy: str = Query("tickerSymbol", alias="sortBy"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Fetches a paginated list of assets."""
+    """Fetches a paginated list of assets. Returns camelCase JSON mapping via Pydantic."""
     sort_mapping = {
         "assetId": "asset_id",
         "tickerSymbol": "ticker_symbol",
@@ -95,14 +133,14 @@ async def read_assets(
         raise exceptions.AssetNotFoundException(detail="No assets match the query parameters.")
     return assets
 
-@app.get("/assets/{tickerSymbol}", response_model=schemas.FinancialAsset)
+@app.get("/assets/{tickerSymbol}", response_model=schemas.FinancialAsset, tags=["Assets"])
 async def read_asset_by_ticker(tickerSymbol: str, db: AsyncSession = Depends(get_db)):
     asset = await crud.get_asset_by_ticker(db, tickerSymbol.upper())
     if not asset:
         raise exceptions.AssetNotFoundException()
     return asset
 
-@app.post("/assets", response_model=schemas.FinancialAsset, status_code=201)
+@app.post("/assets", response_model=schemas.FinancialAsset, status_code=201, tags=["Assets"])
 async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depends(get_db)):
     try:
         return await crud.create_asset(db, asset)
@@ -114,16 +152,20 @@ async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depe
         logger.error(f"Database write failure: {e}")
         raise exceptions.DatabaseConnectionException()
 
-@app.post("/assets/sync", status_code=200)
+@app.post("/assets/sync", status_code=200, tags=["Operations"])
 async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
+    """Triggers a mass update of all tracked asset prices using yfinance."""
     try:
         results = await crud.update_all_assets_prices(db)
-        return {"detail": f"Update processed successfully. Records updated: {results['updated']}", "failedTickers": results['failed']}
+        return {
+            "detail": f"Update processed successfully. Records updated: {results['updated']}", 
+            "failedTickers": results['failed']
+        }
     except Exception as e:
         logger.error(f"Batch synchronization failed: {e}")
         raise exceptions.ExternalAPIException()
 
-@app.get("/assets/{tickerSymbol}/analytics", response_model=schemas.AnalyticsResponse)
+@app.get("/assets/{tickerSymbol}/analytics", response_model=schemas.AnalyticsResponse, tags=["Analytics"])
 async def get_asset_analytics(tickerSymbol: str, db: AsyncSession = Depends(get_db)):
     ticker = tickerSymbol.upper()
     asset = await crud.get_asset_by_ticker(db, ticker)

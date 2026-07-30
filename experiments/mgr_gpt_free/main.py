@@ -1,22 +1,23 @@
 """
-Main FastAPI application for Finance Track.
+Finance Track API
 
-Database layer:
-- snake_case
-
-API layer:
-- camelCase
+Production-ready asynchronous financial tracking system.
+PR #67 introduces complete camelCase API contracts while
+preserving snake_case database architecture internally.
 """
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
+from fastapi.responses import HTMLResponse
 from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +39,10 @@ from schemas import FinancialAsset
 from schemas import FinancialAssetCreate
 from services import get_historical_data
 from utils import logger
+
+
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = BASE_DIR / "templates"
 
 
 @asynccontextmanager
@@ -69,7 +74,7 @@ async def lifespan(app: FastAPI):
                     )
                 )
 
-        logger.info("Application startup completed")
+        logger.info("Finance Track API initialized successfully")
         logger.info("Primary key verified: asset_id")
 
         yield
@@ -86,8 +91,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="Finance Track API",
+    version="1.0.0",
+    description=(
+        "Production-grade asynchronous financial tracking API. "
+        "Built with FastAPI, SQLAlchemy 2.0, async SQLite, "
+        "and PR #67 camelCase API contract transformation layer. "
+        "Internal database architecture remains snake_case while "
+        "public API responses expose camelCase models only."
+    ),
     lifespan=lifespan,
+    docs_url="/docs",
+    openapi_url="/openapi.json",
 )
 
 
@@ -108,7 +123,7 @@ async def finance_exception_handler(
     exc: FinanceException,
 ):
     """
-    Handle custom finance exceptions.
+    Handle finance exceptions.
     """
     logger.error(
         "Finance exception occurred: %s",
@@ -144,15 +159,21 @@ async def http_exception_handler(
     )
 
 
-@app.get("/")
-async def root():
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+)
+async def dashboard():
     """
-    Root endpoint.
+    Render Cosmic UI dashboard.
     """
-    return {
-        "message": "Finance Track API",
-        "status": "running",
-    }
+    dashboard_path = TEMPLATES_DIR / "dashboard.html"
+
+    html_content = dashboard_path.read_text(
+        encoding="utf-8",
+    )
+
+    return HTMLResponse(content=html_content)
 
 
 @app.get("/status")
@@ -183,7 +204,7 @@ async def read_assets(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve all assets.
+    Retrieve all financial assets.
     """
     assets = await get_assets(
         db=db,
@@ -193,7 +214,7 @@ async def read_assets(
 
     if not assets:
         raise AssetNotFoundException(
-            detail="No assets found",
+            detail="No financial assets found",
         )
 
     return assets
@@ -209,26 +230,12 @@ async def create_new_asset(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Create a new financial asset.
-
-    Request body accepts camelCase fields.
+    Create financial asset.
     """
-    try:
-        return await create_asset(
-            db=db,
-            asset=asset,
-        )
-
-    except Exception as error:
-        logger.error(
-            "Asset creation failed: %s",
-            error,
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Asset creation failed",
-        ) from error
+    return await create_asset(
+        db=db,
+        asset=asset,
+    )
 
 
 @app.get(
@@ -240,7 +247,7 @@ async def get_asset(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve single asset by ticker symbol.
+    Retrieve asset by ticker symbol.
     """
     asset = await get_asset_by_ticker(
         db=db,
@@ -263,28 +270,16 @@ async def sync_assets(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Synchronize asset prices.
+    Synchronize market prices.
     """
-    try:
-        updated_assets = await update_all_assets_prices(
-            db=db,
-        )
+    updated_assets = await update_all_assets_prices(
+        db=db,
+    )
 
-        return {
-            "message": "Synchronization completed",
-            "updatedAssets": updated_assets,
-        }
-
-    except Exception as error:
-        logger.error(
-            "Synchronization failed: %s",
-            error,
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Synchronization failed",
-        ) from error
+    return {
+        "message": "Synchronization completed",
+        "updatedAssets": updated_assets,
+    }
 
 
 @app.get(
@@ -296,7 +291,7 @@ async def get_asset_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve analytics for asset.
+    Retrieve analytics for a financial asset.
     """
     asset = await get_asset_by_ticker(
         db=db,
