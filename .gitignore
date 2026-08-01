@@ -26,3 +26,7 @@ env/
 # Systemowe
 .DS_Store
 Thumbs.db
+
+# Logi i skrypty developerskie
+scratch/
+run_all_servers.py

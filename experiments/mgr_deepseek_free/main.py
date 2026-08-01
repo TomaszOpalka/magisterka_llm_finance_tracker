@@ -1,21 +1,23 @@
 """
-Production-ready FastAPI application for Finance Track API.
-Implements async endpoints, camelCase contract (PR #67), and a Cosmic UI dashboard.
+Production‑ready FastAPI application for Finance Track API v1.0.0.
+Implements async endpoints, camelCase contract (PR #67), automatic seeding,
+and serves the Cosmic UI dashboard.
 """
 
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, HTMLResponse
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import engine, async_session
-from models import Base
+from models import Base, FinancialAsset
 from schemas import (
-    FinancialAsset,
+    FinancialAsset as FinancialAssetSchema,
     FinancialAssetCreate,
     AnalyticsResponse,
 )
@@ -34,17 +36,50 @@ from exceptions import (
     AnalyticsException,
 )
 
+# Default tickers for seeding
+DEFAULT_TICKERS = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
+    "TSLA", "META", "BTC-USD", "ETH-USD", "SPY",
+]
 
-# ---------- LIFESPAN ----------
+
+async def seed_default_assets():
+    """
+    Seeds the database with 10 default financial assets if the table is empty.
+    All assets are created with placeholder prices (0.0) ready for sync.
+    """
+    async with async_session() as session:
+        # Check if any assets exist
+        result = await session.execute(select(func.count()).select_from(FinancialAsset))
+        count = result.scalar()
+        if count > 0:
+            logger.info("Database already contains assets – skipping seeding.")
+            return
+
+        logger.info("Empty database detected. Seeding 10 default assets...")
+        for ticker in DEFAULT_TICKERS:
+            asset = FinancialAsset(
+                asset_id=str(uuid.uuid4()),
+                ticker_symbol=ticker,
+                current_market_price=0.0,
+                market_cap=0,
+                last_updated=None,
+            )
+            session.add(asset)
+        await session.commit()
+        logger.info(f"Seeded {len(DEFAULT_TICKERS)} default assets successfully.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Starts up the application: creates tables, migrates if necessary,
-    and disposes the engine on shutdown.
+    Application lifespan: creates tables, performs light migration,
+    seeds default data if necessary, and disposes the engine on shutdown.
     """
     logger.info("Starting Finance Track API – initializing database.")
 
     async with engine.begin() as conn:
+        # Create tables if missing
         def check_tables_exist(sync_conn):
             inspector = inspect(sync_conn)
             return "financial_assets" in inspector.get_table_names()
@@ -56,6 +91,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("Table 'financial_assets' already exists – skipping creation.")
 
+        # Migration: add last_updated column if missing
         def column_exists(sync_conn, table_name, column_name):
             inspector = inspect(sync_conn)
             cols = [c["name"] for c in inspector.get_columns(table_name)]
@@ -73,6 +109,9 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("Column 'last_updated' already exists – migration skipped.")
 
+    # Seed default data if table is empty
+    await seed_default_assets()
+
     logger.info("Finance Track API started successfully.")
     yield
 
@@ -80,7 +119,6 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down – database engine disposed.")
 
 
-# ---------- FASTAPI APP ----------
 app = FastAPI(
     title="Finance Track API",
     version="1.0.0",
@@ -145,7 +183,7 @@ async def healthcheck():
 
 @app.get(
     "/assets",
-    response_model=List[FinancialAsset],
+    response_model=List[FinancialAssetSchema],
     summary="List assets",
 )
 async def read_assets(
@@ -174,7 +212,7 @@ async def read_assets(
 
 @app.get(
     "/assets/{ticker_symbol}",
-    response_model=FinancialAsset,
+    response_model=FinancialAssetSchema,
     summary="Get asset by ticker",
 )
 async def read_asset_by_ticker(
@@ -192,7 +230,7 @@ async def read_asset_by_ticker(
 
 @app.post(
     "/assets",
-    response_model=FinancialAsset,
+    response_model=FinancialAssetSchema,
     status_code=201,
     summary="Create asset",
 )
@@ -272,7 +310,7 @@ async def asset_analytics(
 # ---------- COSMIC UI DASHBOARD ----------
 @app.get("/dashboard", response_class=HTMLResponse, summary="Cosmic UI Dashboard")
 async def dashboard():
-    """Serves the premium dark-themed SPA dashboard."""
+    """Serves the premium dark‑themed SPA dashboard."""
     dashboard_path = Path(__file__).parent / "templates" / "dashboard.html"
     if not dashboard_path.exists():
         raise HTTPException(status_code=404, detail="Dashboard not found")

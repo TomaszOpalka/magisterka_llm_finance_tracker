@@ -1,0 +1,37 @@
+"We are executing the final engineering phase of the 'Finance Track' project. Based on environment integration logs, several models failed due to SQLite schema mismatches (sqlite3.OperationalError: no such column: current_market_price), missing root / endpoints returning 404s, and unhandled external sync failures. We must now bring the application to full production stability, expose hardened OpenAPI docs, and render the complete presentation layer.
+
+Everything in the code must be in English. Explain your technical implementation in Polish under the code block.
+
+TASK: System Recovery, Schema Auto-Creation & 'Cosmic UI' SPA
+
+database.py & main.py (Schema Self-Healing & Startup):
+
+Ensure that on application startup (e.g., using FastAPI's lifespan context manager), the database tables are safely created/checked (Base.metadata.create_all).
+
+Configure the main FastAPI app instance in main.py with explicit production metadata: Title ('Finance Track API'), Version ('1.0.0'), and a detailed Description detailing the async architecture and PR #67 camelCase contract.
+
+Add an explicit root endpoint GET / that returns the dashboard.html template via HTMLResponse.
+
+templates/dashboard.html (The Cosmic UI SPA):
+
+Provide the COMPLETE HTML/JS code for the dashboard. Do not leave any placeholders, missing JS loops, or partial Tailwind layouts.
+
+Styled with Tailwind CSS (via CDN) following the 'Cosmic UI' theme: deep space dark background, neon cyan (#00f3ff) and purple accents, sleek card borders, and crisp typography.
+
+Include:
+
+Top Stats Bar: Showing system status (Active/Syncing), database provider, and total assets tracked.
+
+Asset Data Table: Displaying assetId, tickerSymbol, currentMarketPrice (formatted as currency), marketCap, and lastUpdated.
+
+Sync Controls: A prominent neon action button triggering POST /assets/sync via vanilla JS fetch(). Include a dynamic loading spinner animation and graceful error alert handling if the provider returns 502/500.
+
+OpenAPI & Exception Hardening (schemas.py & main.py):
+
+Verify that /openapi.json and /docs expose schemas strictly in camelCase (assetId, tickerSymbol, currentMarketPrice, marketCap, lastUpdated).
+
+Ensure the sync endpoint cleanly handles network/provider timeouts, throwing an HTTP 502 Bad Gateway JSON response instead of crashing the process.
+
+STRICT ENFORCEMENT:
+
+NO CODE LAZINESS: You MUST output the full source code for main.py, database.py, and templates/dashboard.html. No // rest of HTML here comments allowed."

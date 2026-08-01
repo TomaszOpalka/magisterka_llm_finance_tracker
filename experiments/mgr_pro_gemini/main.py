@@ -1,4 +1,6 @@
 import logging
+import uuid
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import List, Optional, AsyncGenerator
 from pathlib import Path
@@ -9,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 
-from config import settings
+# Local module imports
 from database import AsyncSessionLocal, engine
 import models
 import crud
@@ -22,19 +24,53 @@ logger = logging.getLogger("finance_track")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager handling database initialization and validation."""
-    logger.info("Initializing database with schema validation.")
+    """
+    Lifecycle manager handling database initialization, self-healing schema validation,
+    and automated data seeding for fresh installations.
+    """
+    logger.info("Initializing database with schema validation and self-healing protocols.")
     
     async with engine.begin() as conn:
+        # Step 1: Safely create all tables if they don't exist
         await conn.run_sync(models.Base.metadata.create_all)
         
+        # Step 2: Extract current schema from SQLite
         pragma_query = text("PRAGMA table_info(financial_assets);")
         result = await conn.execute(pragma_query)
         existing_columns = [row[1] for row in result.fetchall()]
         
+        # Step 3: Self-Healing - Column Mutations
         if "id" in existing_columns and "asset_id" not in existing_columns:
             logger.critical("Database validation failed. Forbidden 'id' column detected.")
             raise ValueError("Invalid Primary Key configuration. Must use 'asset_id'.")
+            
+        if "last_updated" not in existing_columns:
+            logger.info("Executing migration: Adding 'last_updated' column.")
+            await conn.execute(text("ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;"))
+            
+        if "last_price" in existing_columns and "current_market_price" not in existing_columns:
+            logger.warning("Executing migration: Renaming 'last_price' to 'current_market_price'.")
+            await conn.execute(text("ALTER TABLE financial_assets RENAME COLUMN last_price TO current_market_price;"))
+
+        # Step 4: Automatic Data Seeding for Fresh Installations
+        count_query = text("SELECT COUNT(*) FROM financial_assets;")
+        count = (await conn.execute(count_query)).scalar()
+        
+        if count == 0:
+            logger.info("Empty database detected. Seeding 10 default financial assets...")
+            default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "BTC-USD", "ETH-USD", "SPY"]
+            
+            for ticker in default_tickers:
+                insert_query = text("""
+                    INSERT INTO financial_assets (asset_id, ticker_symbol, current_market_price, market_cap, last_updated) 
+                    VALUES (:id, :ticker, 0.0, 0.0, :now)
+                """)
+                await conn.execute(insert_query, {
+                    "id": str(uuid.uuid4()), 
+                    "ticker": ticker, 
+                    "now": datetime.now(timezone.utc)
+                })
+            logger.info("Database successfully seeded with default assets.")
             
     logger.info("Database validation successful. API is ready.")
     yield
@@ -42,7 +78,6 @@ async def lifespan(app: FastAPI):
     logger.info("Database connections terminated cleanly.")
 
 
-# --- PRODUCTION OPENAPI METADATA ---
 api_description = """
 ### High-Performance Asynchronous Financial Tracking API
 Welcome to the core backend of **Finance Track**.
@@ -51,7 +86,7 @@ Welcome to the core backend of **Finance Track**.
 * **Fully Asynchronous:** Utilizes `asyncio`, `httpx`, and `aiosqlite` for non-blocking I/O.
 * **PR #67 Compliance:** Strict separation of internal database layout (snake_case) and public API contract (camelCase).
 * **Data Hardening:** Pydantic v2 schemas rigorously validate inbound and outbound payloads.
-* **Cosmic UI Integration:** Supports an embedded SPA dashboard for real-time market monitoring.
+* **Cosmic UI Integration:** Embedded SPA dashboard for real-time market monitoring.
 """
 
 app = FastAPI(
@@ -87,23 +122,25 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-# --- FRONTEND DASHBOARD ---
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/", response_class=HTMLResponse, tags=["Dashboard"])
 async def render_dashboard():
     """Serves the Cosmic UI Single Page Application."""
     template_path = Path("templates/dashboard.html")
     if not template_path.exists():
-        return HTMLResponse("<h1>Error: Dashboard template not found. Please create templates/dashboard.html</h1>", status_code=404)
+        # Graceful fallback if the template directory is missing
+        return HTMLResponse(
+            "<h1>System Error: Dashboard template not found.</h1><p>Ensure templates/dashboard.html exists.</p>", 
+            status_code=404
+        )
     
     with open(template_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     return HTMLResponse(content=html_content, status_code=200)
 
 
-# --- API ENDPOINTS ---
 @app.get("/status", tags=["System"])
 async def healthcheck():
-    return {"status": "ok", "service": settings.APP_NAME}
+    return {"status": "ok", "service": "Finance Track"}
 
 @app.get("/assets", response_model=List[schemas.FinancialAsset], tags=["Assets"])
 async def read_assets(
@@ -117,7 +154,7 @@ async def read_assets(
     sort_mapping = {
         "assetId": "asset_id",
         "tickerSymbol": "ticker_symbol",
-        "lastPrice": "current_market_price",
+        "currentMarketPrice": "current_market_price",
         "marketCap": "market_cap",
         "lastUpdated": "last_updated"
     }
@@ -154,7 +191,10 @@ async def add_asset(asset: schemas.FinancialAssetCreate, db: AsyncSession = Depe
 
 @app.post("/assets/sync", status_code=200, tags=["Operations"])
 async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
-    """Triggers a mass update of all tracked asset prices using yfinance."""
+    """
+    Triggers a mass update of all tracked asset prices.
+    Safely handles provider failures by returning an HTTP 502 Bad Gateway.
+    """
     try:
         results = await crud.update_all_assets_prices(db)
         return {
@@ -162,8 +202,12 @@ async def sync_asset_prices(db: AsyncSession = Depends(get_db)):
             "failedTickers": results['failed']
         }
     except Exception as e:
-        logger.error(f"Batch synchronization failed: {e}")
-        raise exceptions.ExternalAPIException()
+        logger.error(f"Batch synchronization failed during external call: {e}")
+        # Explicit 502 Bad Gateway response prevents backend crashes and informs the client correctly
+        raise HTTPException(
+            status_code=502, 
+            detail="Bad Gateway: External synchronization provider failed or timed out."
+        )
 
 @app.get("/assets/{tickerSymbol}/analytics", response_model=schemas.AnalyticsResponse, tags=["Analytics"])
 async def get_asset_analytics(tickerSymbol: str, db: AsyncSession = Depends(get_db)):

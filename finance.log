@@ -2280,3 +2280,46 @@ WHERE financial_assets.ticker_symbol = ?]
 [2026-05-21 21:51:36] INFO - finance_track - Fetched asset: GOOGL (assetId=48b60d87-65ee-49e3-8243-2ab444b998ca)
 [2026-05-21 21:51:36] WARNING - finance_track - Asset with ticker 'INVALID' not found.
 [2026-05-21 21:51:36] ERROR - finance_track - Business error [404]: Asset with ticker 'INVALID' not found (primary key: assetId). (path: /assets/INVALID, resource key: asset_id)
+2026-08-01 16:49:19,129 - INFO - Created asset with asset_id=122f984c-5c54-489e-8582-5e117ee4408a
+2026-08-01 16:49:20,184 - INFO - Created asset with asset_id=b3dbd455-2e0a-4c04-ba3f-676797453546
+[2026-08-01 16:49:32] ERROR - finance_track - Unexpected error creating asset: create_asset() missing 1 required positional argument: 'asset_data'
+[2026-08-01 16:49:32] ERROR - finance_track - HTTPException [500]: Internal server error. (path: /assets)
+[2026-08-01 16:49:33] ERROR - finance_track - Unexpected error creating asset: create_asset() missing 1 required positional argument: 'asset_data'
+[2026-08-01 16:49:33] ERROR - finance_track - HTTPException [500]: Internal server error. (path: /assets)
+[2026-08-01 16:49:33] CRITICAL - finance_track - Unhandled exception: get_asset_by_ticker() missing 1 required positional argument: 'ticker_symbol' (path: /assets/INVALID)
+Traceback (most recent call last):
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\to311\magisterka_llm_finance_trackers\experiments\mgr_deepseek_free\main.py", line 222, in read_asset_by_ticker
+    asset = await get_asset_by_ticker(ticker_symbol)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: get_asset_by_ticker() missing 1 required positional argument: 'ticker_symbol'

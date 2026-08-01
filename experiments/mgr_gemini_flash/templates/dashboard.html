@@ -13,16 +13,17 @@
                 extend: {
                     colors: {
                         cosmic: {
-                            900: '#090A0F',
-                            800: '#121520',
-                            700: '#1A1E2E',
-                            cyan: '#00F0FF',
-                            purple: '#7000FF',
+                            900: '#07080E',
+                            800: '#0F121C',
+                            700: '#181C2B',
+                            border: '#262C40',
+                            cyan: '#00f3ff',
+                            purple: '#8000ff',
                         }
                     },
                     boxShadow: {
-                        'neon-cyan': '0 0 15px rgba(0, 240, 255, 0.4)',
-                        'neon-purple': '0 0 20px rgba(112, 0, 255, 0.4)',
+                        'neon-cyan': '0 0 15px rgba(0, 243, 255, 0.35)',
+                        'neon-purple': '0 0 20px rgba(128, 0, 255, 0.35)',
                     }
                 }
             }
@@ -30,19 +31,19 @@
     </script>
     <style>
         body {
-            background-color: #090A0F;
+            background-color: #07080E;
             background-image: 
-                radial-gradient(at 0% 0%, rgba(112, 0, 255, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(0, 240, 255, 0.12) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(128, 0, 255, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 243, 255, 0.10) 0px, transparent 50%);
             background-attachment: fixed;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen flex flex-col">
+<body class="text-slate-200 min-h-screen flex flex-col justify-between">
 
     <!-- Top Navigation Header -->
-    <header class="border-b border-slate-800/80 bg-cosmic-800/50 backdrop-blur-md sticky top-0 z-50">
+    <header class="border-b border-cosmic-border bg-cosmic-800/60 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cosmic-purple to-cosmic-cyan flex items-center justify-center shadow-neon-cyan">
@@ -52,15 +53,15 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-wider text-white">FINANCE TRACK</h1>
-                    <p class="text-xs text-slate-400 font-mono">PULL REQUEST #67 / COSMIC UI</p>
+                    <p class="text-xs text-slate-400 font-mono">COSMIC UI / PRODUCTION HARDENED</p>
                 </div>
             </div>
 
-            <!-- Global Action Sync Button -->
+            <!-- Sync Control Button -->
             <button id="sync-btn" onclick="triggerSync()" class="relative group overflow-hidden rounded-xl p-px font-semibold text-sm transition-all duration-300 shadow-neon-purple hover:shadow-neon-cyan">
                 <span class="absolute inset-0 bg-gradient-to-r from-cosmic-purple to-cosmic-cyan transition-all duration-300 group-hover:opacity-90"></span>
                 <span class="relative flex items-center space-x-2 rounded-[11px] bg-cosmic-900 px-5 py-2.5 transition-all duration-300 group-hover:bg-opacity-0">
-                    <svg id="sync-spinner" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg id="sync-spinner" class="hidden animate-spin h-4 w-4 text-cosmic-cyan" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -70,55 +71,84 @@
         </div>
     </header>
 
-    <!-- Main Content Container -->
-    <main class="max-w-7xl mx-auto px-6 py-10 flex-grow w-full space-y-8">
+    <!-- Main Section -->
+    <main class="max-w-7xl mx-auto px-6 py-8 w-full flex-grow space-y-6">
 
-        <!-- System Stats Cards -->
+        <!-- Banner Alert Area for Sync / Post Exceptions -->
+        <div id="alert-box" class="hidden border rounded-xl p-4 text-sm font-mono flex items-center justify-between">
+            <span id="alert-message"></span>
+            <button onclick="hideAlert()" class="text-slate-400 hover:text-white font-bold ml-4">&times;</button>
+        </div>
+
+        <!-- Top Stats Bar -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-cosmic-800/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-sm">
+            <div class="bg-cosmic-800/50 border border-cosmic-border rounded-2xl p-5 backdrop-blur-sm">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">System Status</p>
                 <div class="mt-2 flex items-center space-x-3">
                     <span class="relative flex h-3 w-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="status-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                     </span>
-                    <span id="system-status" class="text-xl font-bold text-white uppercase font-mono">Checking...</span>
+                    <span id="system-status" class="text-lg font-bold text-white uppercase font-mono">Active</span>
                 </div>
             </div>
 
-            <div class="bg-cosmic-800/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tracked Financial Assets</p>
-                <p id="total-assets" class="text-3xl font-bold text-white mt-1 font-mono">0</p>
+            <div class="bg-cosmic-800/50 border border-cosmic-border rounded-2xl p-5 backdrop-blur-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Database Provider</p>
+                <p id="db-provider" class="text-lg font-bold text-cosmic-cyan mt-2 font-mono">SQLite (aiosqlite)</p>
             </div>
 
-            <div class="bg-cosmic-800/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">API Serialization Standard</p>
-                <p class="text-xl font-bold text-cosmic-cyan mt-2 font-mono">camelCase (v1.0.0)</p>
+            <div class="bg-cosmic-800/50 border border-cosmic-border rounded-2xl p-5 backdrop-blur-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Assets Tracked</p>
+                <p id="total-assets" class="text-2xl font-bold text-white mt-1 font-mono">0</p>
             </div>
         </div>
 
-        <!-- Data Table Container -->
-        <div class="bg-cosmic-800/40 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-sm shadow-2xl">
-            <div class="p-6 border-b border-slate-800/80 flex justify-between items-center">
-                <div>
-                    <h2 class="text-lg font-bold text-white">Registered Assets</h2>
-                    <p class="text-xs text-slate-400">Live coordinates synchronized directly with asynchronous data routines</p>
+        <!-- Asset Registration Form (Add Ticker) -->
+        <div class="bg-cosmic-800/50 border border-cosmic-border rounded-2xl p-5 backdrop-blur-sm shadow-xl">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Register New Ticker Symbol</h3>
+            <form id="add-asset-form" onsubmit="handleAddAsset(event)" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <input 
+                        type="text" 
+                        id="ticker-input" 
+                        placeholder="e.g. NFLX, AMD, SOL-USD" 
+                        required
+                        class="w-full bg-cosmic-900 border border-cosmic-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cosmic-cyan transition-colors font-mono uppercase"
+                    />
                 </div>
-                <button onclick="fetchAssets()" class="text-xs text-cosmic-cyan hover:underline font-mono">Refresh Table</button>
+                <button 
+                    type="submit" 
+                    id="add-btn"
+                    class="bg-gradient-to-r from-cosmic-purple to-cosmic-cyan hover:opacity-90 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-neon-purple flex items-center justify-center space-x-2"
+                >
+                    <span id="add-btn-text">+ Add Asset</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Asset Data Table -->
+        <div class="bg-cosmic-800/50 border border-cosmic-border rounded-2xl overflow-hidden backdrop-blur-sm shadow-2xl">
+            <div class="p-5 border-b border-cosmic-border flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-white">Financial Assets Telemetry</h2>
+                    <p class="text-xs text-slate-400">Strict camelCase schema interactions (assetId, currentMarketPrice / lastPrice, marketCap)</p>
+                </div>
+                <button onclick="fetchAssets()" class="text-xs text-cosmic-cyan hover:underline font-mono">Refresh Data</button>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-slate-300">
-                    <thead class="bg-cosmic-700/30 text-xs uppercase font-mono text-slate-400 border-b border-slate-800/80">
+                    <thead class="bg-cosmic-700/40 text-xs uppercase font-mono text-slate-400 border-b border-cosmic-border">
                         <tr>
-                            <th scope="col" class="py-4 px-6">Asset ID</th>
-                            <th scope="col" class="py-4 px-6">Ticker</th>
-                            <th scope="col" class="py-4 px-6">Last Price</th>
-                            <th scope="col" class="py-4 px-6">Market Cap</th>
-                            <th scope="col" class="py-4 px-6">Last Updated</th>
+                            <th scope="col" class="py-3.5 px-6">Asset ID</th>
+                            <th scope="col" class="py-3.5 px-6">Ticker</th>
+                            <th scope="col" class="py-3.5 px-6">Market Price</th>
+                            <th scope="col" class="py-3.5 px-6">Market Cap</th>
+                            <th scope="col" class="py-3.5 px-6">Last Updated</th>
                         </tr>
                     </thead>
-                    <tbody id="assets-table-body" class="divide-y divide-slate-800/50">
+                    <tbody id="assets-table-body" class="divide-y divide-cosmic-border/60">
                         <tr>
                             <td colspan="5" class="py-8 text-center text-slate-500 font-mono">Loading telemetry coordinates...</td>
                         </tr>
@@ -130,11 +160,11 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-slate-800/80 py-6 bg-cosmic-900/80 text-center text-xs text-slate-500 font-mono">
-        Finance Track System Architecture &copy; 2026. All API parameters serialized strictly via camelCase.
+    <footer class="border-t border-cosmic-border py-4 bg-cosmic-900 text-center text-xs text-slate-500 font-mono">
+        Finance Track Production Engine &copy; 2026. Internal storage snake_case decoupled from public camelCase contract.
     </footer>
 
-    <!-- Frontend Application Logic -->
+    <!-- Vanilla JS Application Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             checkStatus();
@@ -145,10 +175,12 @@
             try {
                 const response = await fetch('/status');
                 const data = await response.json();
-                document.getElementById('system-status').innerText = data.status || 'ONLINE';
+                document.getElementById('system-status').innerText = data.status || 'Active';
+                document.getElementById('db-provider').innerText = data.databaseProvider || 'SQLite (aiosqlite)';
             } catch (error) {
-                document.getElementById('system-status').innerText = 'OFFLINE';
-                document.getElementById('system-status').classList.add('text-rose-500');
+                document.getElementById('system-status').innerText = 'Offline';
+                document.getElementById('status-dot').className = 'relative inline-flex rounded-full h-3 w-3 bg-rose-500';
+                document.getElementById('status-ping').className = 'hidden';
             }
         }
 
@@ -156,30 +188,81 @@
             const tableBody = document.getElementById('assets-table-body');
             try {
                 const response = await fetch('/assets?skip=0&limit=100');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
                 const assets = await response.json();
 
-                document.getElementById('total-assets').innerText = assets.length;
+                // Accurately parse array and update header total assets badge
+                const assetList = Array.isArray(assets) ? assets : [];
+                document.getElementById('total-assets').innerText = assetList.length;
 
-                if (assets.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 font-mono">No financial assets discovered in database.</td></tr>`;
+                if (assetList.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 font-mono">No financial assets discovered in repository. Use form above to seed tickers.</td></tr>`;
                     return;
                 }
 
-                tableBody.innerHTML = assets.map(asset => `
-                    <tr class="hover:bg-cosmic-700/20 transition-colors duration-150">
-                        <td class="py-4 px-6 font-mono text-xs text-slate-500">${asset.assetId}</td>
-                        <td class="py-4 px-6 font-bold text-white font-mono">
-                            <span class="px-2.5 py-1 rounded-lg bg-cosmic-purple/20 border border-cosmic-purple/40 text-cosmic-cyan">
-                                ${asset.tickerSymbol}
-                            </span>
-                        </td>
-                        <td class="py-4 px-6 font-mono text-emerald-400 font-semibold">$${Number(asset.lastPrice).toFixed(2)}</td>
-                        <td class="py-4 px-6 font-mono text-slate-300">${formatMarketCap(asset.marketCap)}</td>
-                        <td class="py-4 px-6 font-mono text-xs text-slate-400">${asset.lastUpdated ? new Date(asset.lastUpdated).toLocaleString() : 'N/A'}</td>
-                    </tr>
-                `).join('');
+                tableBody.innerHTML = assetList.map(asset => {
+                    // Handle contract alias flexibility seamlessly (currentMarketPrice or lastPrice)
+                    const priceValue = asset.currentMarketPrice !== undefined ? asset.currentMarketPrice : (asset.lastPrice || 0.0);
+                    
+                    return `
+                        <tr class="hover:bg-cosmic-700/30 transition-colors duration-150">
+                            <td class="py-4 px-6 font-mono text-xs text-slate-500">${asset.assetId || 'N/A'}</td>
+                            <td class="py-4 px-6 font-bold text-white font-mono">
+                                <span class="px-2.5 py-1 rounded-lg bg-cosmic-purple/20 border border-cosmic-purple/40 text-cosmic-cyan">
+                                    ${asset.tickerSymbol || 'N/A'}
+                                </span>
+                            </td>
+                            <td class="py-4 px-6 font-mono text-emerald-400 font-semibold">$${Number(priceValue).toFixed(2)}</td>
+                            <td class="py-4 px-6 font-mono text-slate-300">${formatMarketCap(asset.marketCap)}</td>
+                            <td class="py-4 px-6 font-mono text-xs text-slate-400">${asset.lastUpdated ? new Date(asset.lastUpdated).toLocaleString() : 'Pending Sync'}</td>
+                        </tr>
+                    `;
+                }).join('');
             } catch (error) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-rose-500 font-mono">Failed to fetch asset telemetry. Check logs.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-rose-500 font-mono">Telemetry retrieval error: ${error.message}</td></tr>`;
+            }
+        }
+
+        async function handleAddAsset(event) {
+            event.preventDefault();
+            const tickerInput = document.getElementById('ticker-input');
+            const addBtn = document.getElementById('add-btn');
+            const addBtnText = document.getElementById('add-btn-text');
+            const tickerValue = tickerInput.value.trim().toUpperCase();
+
+            if (!tickerValue) return;
+
+            addBtn.disabled = true;
+            addBtnText.innerText = 'Adding...';
+            hideAlert();
+
+            try {
+                // Post asset with strict currentMarketPrice / lastPrice schema payload initialization
+                const response = await fetch('/assets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tickerSymbol: tickerValue,
+                        currentMarketPrice: 0.0,
+                        marketCap: 0.0
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    showAlert(`Failed to add asset: ${result.message || 'Asset may already exist.'}`, 'error');
+                } else {
+                    showAlert(`Asset ${tickerValue} added successfully!`, 'success');
+                    tickerInput.value = '';
+                    await fetchAssets();
+                }
+            } catch (error) {
+                showAlert(`Network error adding asset: ${error.message}`, 'error');
+            } font-mono finally {
+                addBtn.disabled = false;
+                addBtnText.innerText = '+ Add Asset';
             }
         }
 
@@ -190,16 +273,26 @@
 
             btn.disabled = true;
             spinner.classList.remove('hidden');
-            btnText.innerText = 'Synchronizing...';
+            btnText.innerText = 'Syncing Provider...';
+            hideAlert();
 
             try {
                 const response = await fetch('/assets/sync', { method: 'POST' });
                 const result = await response.json();
-                
+
+                if (!response.ok) {
+                    if (response.status === 502) {
+                        showAlert(`502 Bad Gateway: ${result.detail || 'Upstream provider connection timed out.'}`, 'error');
+                    } else {
+                        showAlert(`Sync failure (${response.status}): ${result.message || 'Internal processing error.'}`, 'error');
+                    }
+                    return;
+                }
+
                 await fetchAssets();
-                alert(`Market synchronization successful! Updated ${result.updatedRecords} assets.`);
+                showAlert(`Market sync successful! Updated records: ${result.updatedRecords}`, 'success');
             } catch (error) {
-                alert('Synchronization failed. Check backend connection.');
+                showAlert(`Network failure triggering provider sync: ${error.message}`, 'error');
             } finally {
                 btn.disabled = false;
                 spinner.classList.add('hidden');
@@ -208,11 +301,28 @@
         }
 
         function formatMarketCap(marketCap) {
-            if (!marketCap) return 'N/A';
+            if (!marketCap || marketCap === 0) return 'Pending Sync';
             if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)} T`;
             if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)} B`;
             if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)} M`;
             return `$${marketCap.toLocaleString()}`;
+        }
+
+        function showAlert(msg, type) {
+            const alertBox = document.getElementById('alert-box');
+            const alertMsg = document.getElementById('alert-message');
+            alertBox.classList.remove('hidden', 'bg-rose-900/40', 'border-rose-700', 'text-rose-300', 'bg-emerald-900/40', 'border-emerald-700', 'text-emerald-300');
+            
+            if (type === 'error') {
+                alertBox.classList.add('bg-rose-900/40', 'border-rose-700', 'text-rose-300');
+            } else {
+                alertBox.classList.add('bg-emerald-900/40', 'border-emerald-700', 'text-emerald-300');
+            }
+            alertMsg.innerText = msg;
+        }
+
+        function hideAlert() {
+            document.getElementById('alert-box').classList.add('hidden');
         }
     </script>
 </body>
