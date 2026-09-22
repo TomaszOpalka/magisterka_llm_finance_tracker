@@ -1,0 +1,23 @@
+"We are performing the final patch for the 'Finance Track' API. Currently, fresh installations launch with an empty database, causing UI telemetry errors (undefined stats and fetch failures), while the dashboard lacks a direct method to add new tickers or parse seeded financial assets properly. Everything in the code must be in English. Explain your technical implementation in Polish under the code block.
+
+TASK: Database Data Seeding & Dashboard UI Interactivity Hardening
+
+database.py / main.py (Automatic Initial Data Seeding):
+
+On application startup (within the lifespan manager), automatically seed the database with exactly 10 default financial assets if the table is empty.
+
+Use the following standard ticker tickers: AAPL, MSFT, GOOGL, AMZN, NVDA, TSLA, META, BTC-USD, ETH-USD, SPY.
+
+Ensure default/placeholder values are assigned (e.g., initial current_market_price = 0.0) so they are ready for immediate synchronization via /assets/sync.
+
+templates/dashboard.html (UI Parsing & Ticker Addition Form):
+
+Fix Response Parsing: Update the vanilla JavaScript fetch('/assets') logic to handle both array responses and camelCase fields strictly (assetId, tickerSymbol, lastPrice or currentMarketPrice, marketCap, lastUpdated). Fix the undefined badge in the header so it accurately counts the total number of tracked assets (data.length).
+
+Add Ticker Input Form: Add a sleek, Cosmic UI-styled inline form (input field + 'Add Asset' neon button) directly above the table allowing users to send a POST /assets request with a JSON payload {"tickerSymbol": "TICKER"}.
+
+Automatically refresh the asset table immediately after a successful addition or synchronization.
+
+Strict Enforcement:
+
+NO CODE LAZINESS: Provide the COMPLETE, production-ready code for main.py (or startup logic) and templates/dashboard.html. Do not cut code with placeholders."

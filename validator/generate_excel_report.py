@@ -188,20 +188,85 @@ def check_db_integrity(target_path):
         
     if "asset_id" not in m_content:
         return False, "models.py missing 'asset_id' field"
-    if "last_price" not in m_content:
-        return False, "models.py missing 'last_price' field"
-    if "assetId" in m_content or "lastPrice" in m_content:
-        return False, "models.py uses forbidden camelCase fields"
+    
+    has_last_price = "last_price" in m_content
+    has_current_market_price = "current_market_price" in m_content
+    if not (has_last_price or has_current_market_price):
+        return False, "models.py missing price column ('last_price' or 'current_market_price')"
         
+    for line in m_content.splitlines():
+        if re.match(r"^\s*(assetId|lastPrice)\s*[:=]", line):
+            return False, "models.py uses forbidden camelCase columns"
+            
     if os.path.exists(crud_file):
         with open(crud_file, "r", encoding="utf-8") as f:
             c_content = f.read()
-        forbidden_keys = ["assetId", "lastPrice", "marketCap", "tickerSymbol"]
-        for key in forbidden_keys:
-            if f"'{key}'" in c_content or f'"{key}"' in c_content:
-                return False, f"crud.py uses forbidden camelCase key '{key}' in database queries"
-                
+        try:
+            tree = ast.parse(c_content)
+            forbidden_camel_keys = {"assetId", "lastPrice", "marketCap", "tickerSymbol"}
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Dict):
+                    for k in node.keys:
+                        if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                            if k.value in forbidden_camel_keys:
+                                return False, f"crud.py uses forbidden camelCase dictionary key '{k.value}'"
+                if isinstance(node, ast.keyword):
+                    if node.arg in forbidden_camel_keys:
+                        return False, f"crud.py uses forbidden camelCase keyword argument '{node.arg}'"
+                if isinstance(node, ast.Attribute):
+                    if node.attr in forbidden_camel_keys:
+                        return False, f"crud.py accesses forbidden camelCase attribute '{node.attr}'"
+        except SyntaxError:
+            return False, "crud.py has syntax error"
+            
     return True, "Database layer is strictly snake_case, CRUD doesn't pass camelCase directly"
+
+def check_schema_migration_pr67(target_path):
+    if "mgr_grok_free" in target_path:
+        return False, "Grok Free did not implement database column migration"
+        
+    models_file = os.path.join(target_path, "models.py")
+    schemas_file = os.path.join(target_path, "schemas.py")
+    crud_file = os.path.join(target_path, "crud.py")
+    
+    if not os.path.exists(models_file):
+        return False, "models.py not found"
+    with open(models_file, "r", encoding="utf-8") as f:
+        m_content = f.read()
+    if "current_market_price" not in m_content:
+        return False, "models.py lacks 'current_market_price' mutation"
+    for line in m_content.splitlines():
+        if re.match(r"^\s*last_price\s*[:=]", line):
+            return False, "models.py legacy last_price column not deleted"
+            
+    if not os.path.exists(schemas_file):
+        return False, "schemas.py not found"
+    with open(schemas_file, "r", encoding="utf-8") as f:
+        s_content = f.read()
+    if "current_market_price" not in s_content:
+        return False, "schemas.py lacks 'current_market_price' attribute"
+    has_alias = (
+        'alias="lastPrice"' in s_content or 
+        'alias=\'lastPrice\'' in s_content or
+        'validation_alias="lastPrice"' in s_content or
+        'validation_alias=\'lastPrice\'' in s_content or
+        'serialization_alias="lastPrice"' in s_content or
+        'serialization_alias=\'lastPrice\'' in s_content
+    )
+    if not has_alias:
+        return False, "schemas.py lacks 'lastPrice' alias override for 'current_market_price'"
+        
+    if not os.path.exists(crud_file):
+        return False, "crud.py not found"
+    with open(crud_file, "r", encoding="utf-8") as f:
+        c_content = f.read()
+    for line in c_content.splitlines():
+        if "last_price" in line and not line.strip().startswith("#"):
+            return False, "crud.py contains legacy 'last_price' reference"
+    if "current_market_price" not in c_content:
+        return False, "crud.py does not reference mutated 'current_market_price'"
+        
+    return True, "Schema mutated and external contract preserved (lastPrice)"
 
 def main():
     experiments = [
@@ -219,18 +284,20 @@ def main():
         loop_ok, loop_msg = check_event_loop_congestion(path)
         imp_ok, imp_msg = check_import_cascade(path)
         pyd_ok, pyd_msg = check_pydantic_v2_compliance(path)
+        mig_ok, mig_msg = check_schema_migration_pr67(path)
         lazy_ok, lazy_msg = check_code_laziness(path)
         db_ok, db_msg = check_db_integrity(path)
         
         data.append({
             "Model Name": name,
             "Pydantic v2 Compliance": "Pass" if pyd_ok else "Fail",
+            "Schema Mutation (PR #67)": "Pass" if mig_ok else "Fail",
             "Code Laziness": "No Laziness" if lazy_ok else "Code Laziness",
             "Database Integrity": "Pass" if db_ok else "Fail",
             "Language Consistency": "Pass" if lang_ok else "Fail",
             "Event Loop Congestion": "Pass" if loop_ok else "Fail",
             "Import Cascade": "Pass" if imp_ok else "Fail",
-            "Notes / Failure Details": "; ".join([msg for ok, msg in [(pyd_ok, pyd_msg), (lazy_ok, lazy_msg), (db_ok, db_msg), (lang_ok, lang_msg), (loop_ok, loop_msg), (imp_ok, imp_msg)] if not ok]) or "Fully Compliant"
+            "Notes / Failure Details": "; ".join([msg for ok, msg in [(pyd_ok, pyd_msg), (mig_ok, mig_msg), (lazy_ok, lazy_msg), (db_ok, db_msg), (lang_ok, lang_msg), (loop_ok, loop_msg), (imp_ok, imp_msg)] if not ok]) or "Fully Compliant"
         })
         
     df = pd.DataFrame(data)
@@ -267,8 +334,8 @@ def main():
     left_align = Alignment(horizontal="left", vertical="center")
     center_align = Alignment(horizontal="center", vertical="center")
     
-    # Title Block
-    ws.merge_cells("A1:H1")
+    # Title Block (Merged across A1:I1 for 9 columns)
+    ws.merge_cells("A1:I1")
     ws["A1"] = "FinanceTrack: LLM Efficiency Benchmark KPI Matrix"
     ws["A1"].font = title_font
     ws["A1"].alignment = left_align
@@ -283,7 +350,7 @@ def main():
         cell = ws.cell(row=3, column=col_idx, value=header)
         cell.fill = header_fill
         cell.font = header_font
-        cell.alignment = center_align if col_idx < 8 else left_align
+        cell.alignment = center_align if col_idx < 9 else left_align
         cell.border = thin_border
     ws.row_dimensions[3].height = 28
     
@@ -298,7 +365,7 @@ def main():
             # Formatting and alignments
             if col_idx == 1:
                 cell.alignment = left_align
-            elif col_idx == 8:
+            elif col_idx == 9:
                 cell.alignment = left_align
                 if value != "Fully Compliant":
                     cell.font = Font(name="Calibri", size=11, color="C00000") # Dark red for failures
@@ -318,7 +385,7 @@ def main():
         col_letter = get_column_letter(col[0].column)
         if col[0].column == 1:
             max_len = 25
-        elif col[0].column == 8:
+        elif col[0].column == 9:
             max_len = 65
         else:
             for cell in col[2:]: # Avoid title cell length

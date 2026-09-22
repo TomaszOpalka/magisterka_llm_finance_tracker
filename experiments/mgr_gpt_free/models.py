@@ -1,24 +1,29 @@
 """
-SQLAlchemy models for Finance Track (database layer).
+SQLAlchemy models for Finance Track.
 """
 
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import BigInteger, DateTime, Float, String, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import BigInteger
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import String
+from sqlalchemy import func
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 
 
 class Base(DeclarativeBase):
     """
-    Base SQLAlchemy class.
+    Base declarative class.
     """
-    pass
 
 
 class FinancialAsset(Base):
     """
-    Database model (snake_case enforced).
+    Financial asset database model.
     """
 
     __tablename__ = "financial_assets"
@@ -36,17 +41,20 @@ class FinancialAsset(Base):
         nullable=False,
     )
 
-    last_price: Mapped[float] = mapped_column(
+    current_market_price: Mapped[float] = mapped_column(
         Float,
+        nullable=False,
         default=0.0,
+        server_default="0",
     )
 
     market_cap: Mapped[int] = mapped_column(
         BigInteger,
+        nullable=False,
         default=0,
     )
 
-    last_updated: Mapped[datetime] = mapped_column(
+    last_updated: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=True,

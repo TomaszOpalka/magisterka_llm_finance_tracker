@@ -1,27 +1,25 @@
 """
-Main FastAPI application for Finance Track.
+Finance Track API.
 
-Database layer:
-- snake_case
-
-API layer:
-- camelCase
+Production asynchronous financial tracking system.
+Supports PR #67 camelCase API contract while keeping
+internal database fields in snake_case.
 """
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
+from uuid import uuid4
 
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
-from fastapi import Query
 from fastapi import Request
+from fastapi.responses import HTMLResponse
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from analytics import calculate_moving_average
-from analytics import calculate_rsi
 from config import settings
 from crud import create_asset
 from crud import get_asset_by_ticker
@@ -30,63 +28,121 @@ from crud import update_all_assets_prices
 from database import AsyncSessionLocal
 from database import engine
 from exceptions import AssetNotFoundException
-from exceptions import DatabaseConnectionException
 from exceptions import FinanceException
 from models import Base
-from schemas import AnalyticsResponse
+from models import FinancialAsset
 from schemas import FinancialAsset
 from schemas import FinancialAssetCreate
-from services import get_historical_data
+from schemas import AnalyticsResponse
 from utils import logger
+
+
+BASE_DIR = Path(__file__).resolve().parent
+DASHBOARD_PATH = (
+    BASE_DIR /
+    "templates" /
+    "dashboard.html"
+)
+
+
+DEFAULT_ASSETS = [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "NVDA",
+    "TSLA",
+    "META",
+    "BTC-USD",
+    "ETH-USD",
+    "SPY",
+]
+
+
+async def seed_default_assets():
+    """
+    Insert default financial assets into an empty database.
+    """
+
+    async with AsyncSessionLocal() as session:
+
+        result = await session.execute(
+            select(FinancialAsset)
+        )
+
+        existing_assets = result.scalars().all()
+
+        if existing_assets:
+            logger.info(
+                "Database already contains assets"
+            )
+            return
+
+        for ticker in DEFAULT_ASSETS:
+
+            asset = FinancialAsset(
+                asset_id=str(uuid4()),
+                ticker_symbol=ticker,
+                current_market_price=0.0,
+                market_cap=0,
+            )
+
+            session.add(asset)
+
+        await session.commit()
+
+        logger.info(
+            "Inserted %s default financial assets",
+            len(DEFAULT_ASSETS),
+        )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application startup lifecycle.
+    Manage application startup and shutdown.
     """
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
 
-            result = await conn.execute(
-                text(
-                    """
-                    PRAGMA table_info(financial_assets)
-                    """
-                )
+    try:
+
+        async with engine.begin() as connection:
+
+            await connection.run_sync(
+                Base.metadata.create_all
             )
 
-            columns = [row[1] for row in result.fetchall()]
+        await seed_default_assets()
 
-            if "last_updated" not in columns:
-                await conn.execute(
-                    text(
-                        """
-                        ALTER TABLE financial_assets
-                        ADD COLUMN last_updated DATETIME
-                        """
-                    )
-                )
+        logger.info(
+            "Finance Track API started"
+        )
 
-        logger.info("Application startup completed")
-        logger.info("Primary key verified: asset_id")
+        logger.info(
+            "Primary key verification: asset_id"
+        )
 
         yield
 
     except Exception as error:
+
         logger.error(
-            "Database initialization failed: %s",
+            "Startup failure: %s",
             error,
         )
 
-        raise DatabaseConnectionException(
-            detail="Database initialization failed",
-        ) from error
+        raise
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="Finance Track API",
+    version="1.0.0",
+    description=(
+        "Asynchronous financial tracking API "
+        "built with FastAPI and SQLAlchemy 2.0. "
+        "PR #67 introduces camelCase API contracts "
+        "while preserving internal snake_case "
+        "database architecture."
+    ),
     lifespan=lifespan,
 )
 
@@ -96,8 +152,9 @@ async def get_db() -> AsyncGenerator[
     None,
 ]:
     """
-    Database dependency provider.
+    Provide asynchronous database sessions.
     """
+
     async with AsyncSessionLocal() as session:
         yield session
 
@@ -108,10 +165,11 @@ async def finance_exception_handler(
     exc: FinanceException,
 ):
     """
-    Handle custom finance exceptions.
+    Handle application exceptions.
     """
+
     logger.error(
-        "Finance exception occurred: %s",
+        "Finance error: %s",
         exc.detail,
     )
 
@@ -123,43 +181,35 @@ async def finance_exception_handler(
     )
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(
-    request: Request,
-    exc: HTTPException,
-):
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+)
+async def dashboard():
     """
-    Handle HTTP exceptions.
+    Return Cosmic UI dashboard.
     """
-    logger.error(
-        "HTTP exception occurred: %s",
-        exc.detail,
+
+    if not DASHBOARD_PATH.exists():
+
+        raise HTTPException(
+            status_code=404,
+            detail="Dashboard template missing",
+        )
+
+    return HTMLResponse(
+        content=DASHBOARD_PATH.read_text(
+            encoding="utf-8",
+        )
     )
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-        },
-    )
-
-
-@app.get("/")
-async def root():
-    """
-    Root endpoint.
-    """
-    return {
-        "message": "Finance Track API",
-        "status": "running",
-    }
 
 
 @app.get("/status")
 async def status():
     """
-    Healthcheck endpoint.
+    Return system health information.
     """
+
     return {
         "status": "ok",
         "database": "connected",
@@ -168,94 +218,37 @@ async def status():
 
 @app.get(
     "/assets",
-    response_model=list[FinancialAsset],
 )
 async def read_assets(
-    skip: int = Query(
-        default=0,
-        ge=0,
-    ),
-    limit: int = Query(
-        default=10,
-        ge=1,
-        le=100,
-    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve all assets.
+    Return all tracked assets.
     """
+
     assets = await get_assets(
         db=db,
-        skip=skip,
-        limit=limit,
+        limit=100,
     )
-
-    if not assets:
-        raise AssetNotFoundException(
-            detail="No assets found",
-        )
 
     return assets
 
 
 @app.post(
     "/assets",
-    response_model=FinancialAsset,
-    status_code=201,
 )
-async def create_new_asset(
-    asset: FinancialAssetCreate,
+async def add_asset(
+    payload: FinancialAssetCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Create a new financial asset.
-
-    Request body accepts camelCase fields.
+    Add a new financial asset.
     """
-    try:
-        return await create_asset(
-            db=db,
-            asset=asset,
-        )
 
-    except Exception as error:
-        logger.error(
-            "Asset creation failed: %s",
-            error,
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Asset creation failed",
-        ) from error
-
-
-@app.get(
-    "/assets/{ticker_symbol}",
-    response_model=FinancialAsset,
-)
-async def get_asset(
-    ticker_symbol: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Retrieve single asset by ticker symbol.
-    """
-    asset = await get_asset_by_ticker(
+    return await create_asset(
         db=db,
-        ticker_symbol=ticker_symbol,
+        asset=payload,
     )
-
-    if asset is None:
-        raise AssetNotFoundException(
-            detail=(
-                f"Asset with ticker "
-                f"{ticker_symbol} not found"
-            ),
-        )
-
-    return asset
 
 
 @app.post("/assets/sync")
@@ -263,73 +256,60 @@ async def sync_assets(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Synchronize asset prices.
+    Synchronize market prices.
     """
+
     try:
-        updated_assets = await update_all_assets_prices(
+
+        updated = await update_all_assets_prices(
             db=db,
         )
 
         return {
-            "message": "Synchronization completed",
-            "updatedAssets": updated_assets,
+            "status": "completed",
+            "updatedAssets": updated,
         }
 
+    except TimeoutError:
+
+        raise HTTPException(
+            status_code=502,
+            detail="External market provider timeout",
+        )
+
     except Exception as error:
+
         logger.error(
             "Synchronization failed: %s",
             error,
         )
 
         raise HTTPException(
-            status_code=500,
-            detail="Synchronization failed",
-        ) from error
+            status_code=502,
+            detail="Market synchronization failed",
+        )
 
 
 @app.get(
-    "/assets/{ticker_symbol}/analytics",
-    response_model=AnalyticsResponse,
+    "/assets/{ticker_symbol}",
 )
-async def get_asset_analytics(
+async def get_single_asset(
     ticker_symbol: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Retrieve analytics for asset.
+    Retrieve one asset by ticker.
     """
+
     asset = await get_asset_by_ticker(
         db=db,
         ticker_symbol=ticker_symbol,
     )
 
     if asset is None:
+
         raise AssetNotFoundException(
             detail="Asset not found",
         )
 
-    historical_prices = await get_historical_data(
-        ticker=ticker_symbol,
-        days=30,
-    )
-
-    if not historical_prices:
-        raise HTTPException(
-            status_code=503,
-            detail="Historical data unavailable",
-        )
-
-    moving_average = calculate_moving_average(
-        historical_prices,
-    )
-
-    rsi_value = calculate_rsi(
-        historical_prices,
-        periods=14,
-    )
-
-    return AnalyticsResponse(
-        ticker_symbol=ticker_symbol,
-        moving_average_30d=moving_average,
-        rsi_14=rsi_value,
-    )
+    return asset

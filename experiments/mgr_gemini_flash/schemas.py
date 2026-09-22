@@ -1,13 +1,12 @@
-from pydantic import BaseModel, ConfigDict, AliasGenerator
+from pydantic import BaseModel, ConfigDict, Field, AliasGenerator
 from pydantic.alias_generators import to_camel
 from typing import Optional
 from datetime import datetime
 
 class BaseSchema(BaseModel):
     """
-    Core schema pattern for global snake_case <-> camelCase transformations.
-    Configures Pydantic v2 to accept inbound camelCase payloads and emit 
-    outbound camelCase responses, while mapping internally to snake_case.
+    Base data-validation controller enforcing inbound and outbound
+    camelCase transformations globally while using native snake_case inside fields.
     """
     model_config = ConfigDict(
         alias_generator=AliasGenerator(
@@ -20,31 +19,29 @@ class BaseSchema(BaseModel):
 
 class FinancialAssetBase(BaseSchema):
     ticker_symbol: str
-    last_price: float
+    # Hardcoded field-level overrides map current_market_price directly to lastPrice
+    current_market_price: float = Field(
+        validation_alias="lastPrice",
+        serialization_alias="lastPrice"
+    )
     market_cap: Optional[float] = None
 
 class FinancialAssetCreate(FinancialAssetBase):
-    """
-    Handles incoming JSON payloads for asset registration.
-    Strictly expects inbound camelCase keys (tickerSymbol, lastPrice, marketCap).
-    """
+    """Data intake schema layer parsing camelCase payload structures."""
     pass
 
 class FinancialAsset(FinancialAssetBase):
-    """
-    Represents an asset record emitted by the API.
-    Transforms snake_case properties to camelCase (assetId, lastUpdated).
-    """
+    """Outbound payload contract mapping data structures back to the public network."""
     asset_id: str
     last_updated: Optional[datetime] = None
 
 class AssetAnalytics(BaseSchema):
-    """Technical sub-metrics for an asset record."""
+    """Technical metadata indicator metrics wrapper."""
     moving_average_30d: Optional[float] = None
     rsi_14: Optional[float] = None
 
 class AnalyticsResponse(BaseSchema):
-    """Unified response envelope for technical indicator data streams."""
+    """Standardized response layout used to serve technical analysis calculations."""
     ticker_symbol: str
     moving_average_30d: Optional[float] = None
     rsi_14: Optional[float] = None

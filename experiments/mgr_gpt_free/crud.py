@@ -1,117 +1,157 @@
 """
-CRUD operations for Finance Track system.
+CRUD operations for Finance Track.
 """
 
 from datetime import datetime
-from typing import List, Optional
-from uuid import uuid4
 
+from sqlalchemy import asc
+from sqlalchemy import desc
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import FinancialAsset
 from schemas import FinancialAssetCreate
 from services import get_stock_price
+from utils import logger
 
 
 async def get_assets(
     db: AsyncSession,
     skip: int = 0,
     limit: int = 10,
-    min_price: Optional[float] = None,
+    min_price: float | None = None,
     sort_by: str = "ticker_symbol",
-) -> List[FinancialAsset]:
+):
     """
-    Retrieve assets with filtering, pagination and sorting.
+    Retrieve all financial assets.
     """
+
     query = select(FinancialAsset)
 
     if min_price is not None:
-        query = query.where(FinancialAsset.last_price >= min_price)
+        query = query.where(
+            FinancialAsset.current_market_price >= min_price
+        )
 
-    allowed_sort_fields = {
-        "ticker_symbol": FinancialAsset.ticker_symbol,
-        "last_price": FinancialAsset.last_price,
-        "market_cap": FinancialAsset.market_cap,
+    sortable_fields = {
         "asset_id": FinancialAsset.asset_id,
+        "ticker_symbol": FinancialAsset.ticker_symbol,
+        "current_market_price": (
+            FinancialAsset.current_market_price
+        ),
+        "market_cap": FinancialAsset.market_cap,
+        "last_updated": FinancialAsset.last_updated,
     }
 
-    sort_column = allowed_sort_fields.get(
+    sort_column = sortable_fields.get(
         sort_by,
         FinancialAsset.ticker_symbol,
     )
 
-    query = query.order_by(sort_column).offset(skip).limit(limit)
+    query = (
+        query.order_by(asc(sort_column))
+        .offset(skip)
+        .limit(limit)
+    )
 
     result = await db.execute(query)
+
     return result.scalars().all()
 
 
 async def get_asset_by_ticker(
     db: AsyncSession,
     ticker_symbol: str,
-) -> Optional[FinancialAsset]:
+):
     """
-    Retrieve single asset by ticker symbol.
+    Retrieve asset by ticker symbol.
     """
-    result = await db.execute(
-        select(FinancialAsset).where(
-            FinancialAsset.ticker_symbol == ticker_symbol
-        )
+
+    query = select(FinancialAsset).where(
+        FinancialAsset.ticker_symbol == ticker_symbol
     )
-    return result.scalars().first()
+
+    result = await db.execute(query)
+
+    return result.scalar_one_or_none()
 
 
 async def create_asset(
     db: AsyncSession,
-    asset_in: FinancialAssetCreate | None = None,
-    asset: FinancialAssetCreate | None = None,
-) -> FinancialAsset:
+    asset: FinancialAssetCreate,
+):
     """
-    Create new financial asset.
+    Create a new financial asset.
     """
-    if asset_in is None:
-        asset_in = asset
-    try:
-        new_asset = FinancialAsset(
-            asset_id=str(uuid4()),
-            ticker_symbol=asset_in.ticker_symbol,
-            last_price=asset_in.last_price,
-            market_cap=asset_in.market_cap,
-            last_updated=asset_in.last_updated,
-        )
 
-        db.add(new_asset)
-        await db.commit()
-        await db.refresh(new_asset)
+    db_asset = FinancialAsset(
+        ticker_symbol=asset.ticker_symbol,
+        current_market_price=asset.current_market_price,
+        market_cap=asset.market_cap,
+        last_updated=asset.last_updated,
+    )
 
-        return new_asset
+    db.add(db_asset)
 
-    except SQLAlchemyError:
-        await db.rollback()
-        raise
+    await db.commit()
+    await db.refresh(db_asset)
+
+    logger.info(
+        "Created asset with asset_id=%s",
+        db_asset.asset_id,
+    )
+
+    return db_asset
 
 
-async def update_all_assets_prices(db: AsyncSession) -> int:
+async def update_all_assets_prices(
+    db: AsyncSession,
+):
     """
-    Update prices for all assets using external service.
-
-    Returns number of successfully updated records.
+    Update all asset prices using yfinance.
     """
-    result = await db.execute(select(FinancialAsset))
+
+    result = await db.execute(
+        select(FinancialAsset)
+    )
+
     assets = result.scalars().all()
 
-    updated_count = 0
+    updated_assets = 0
 
     for asset in assets:
-        price = await get_stock_price(asset.ticker_symbol)
+        try:
+            latest_price = await get_stock_price(
+                asset.ticker_symbol
+            )
 
-        if price is not None:
-            asset.last_price = price
+            if latest_price is None:
+                logger.warning(
+                    "Price update skipped for asset_id=%s",
+                    asset.asset_id,
+                )
+                continue
+
+            asset.current_market_price = latest_price
             asset.last_updated = datetime.utcnow()
-            updated_count += 1
+
+            updated_assets += 1
+
+        except Exception as error:
+            logger.error(
+                (
+                    "Synchronization failed for "
+                    "asset_id=%s: %s"
+                ),
+                asset.asset_id,
+                error,
+            )
 
     await db.commit()
 
-    return updated_count
+    logger.info(
+        "Updated %s assets successfully",
+        updated_assets,
+    )
+
+    return updated_assets

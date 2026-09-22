@@ -1,8 +1,8 @@
 """
 Pydantic v2 schemas for the Finance Track system.
-All public API keys are camelCase. Incoming JSON with camelCase keys is
-automatically mapped to internal snake_case attributes via an alias generator.
-Database columns remain snake_case (asset_id, ticker_symbol, etc.).
+Internal attribute names follow the database columns (e.g., current_market_price),
+while the public API uses camelCase aliases. The field previously named last_price
+is now current_market_price, but its JSON key remains 'lastPrice'.
 """
 
 from datetime import datetime
@@ -18,10 +18,8 @@ def _to_camel(snake: str) -> str:
 
 class CamelCaseModel(BaseModel):
     """
-    Base class that instructs Pydantic to:
-    - Serialize all fields to camelCase using `_to_camel`.
-    - Accept both camelCase and snake_case during deserialization
-      (populate_by_name=True allows access by the original field name).
+    Base model with automatic camelCase alias generation.
+    Fields may override the alias explicitly when needed.
     """
     model_config = ConfigDict(
         alias_generator=_to_camel,
@@ -32,15 +30,22 @@ class CamelCaseModel(BaseModel):
 class FinancialAssetBase(CamelCaseModel):
     """
     Common fields for a financial asset.
-    API keys (camelCase): tickerSymbol, lastPrice, marketCap, lastUpdated.
-    Internal Python attributes are snake_case (ticker_symbol, etc.).
+    - ticker_symbol -> tickerSymbol (automatic)
+    - current_market_price -> lastPrice (explicit alias)
+    - market_cap -> marketCap (automatic)
+    - last_updated -> lastUpdated (automatic)
     """
     ticker_symbol: str = Field(
         ...,
         pattern=r"^[A-Z]{1,5}$",
         description="Stock ticker symbol, 1-5 uppercase letters (e.g. AAPL)",
     )
-    last_price: float = Field(..., ge=0, description="Latest observed price (>=0)")
+    current_market_price: float = Field(
+        ...,
+        ge=0,
+        alias="lastPrice",
+        description="Latest observed market price (>=0). Serialised as 'lastPrice'.",
+    )
     market_cap: int = Field(..., description="Market capitalisation as an integer")
     last_updated: datetime | None = Field(
         default=None, description="Timestamp of the last price update"
@@ -50,8 +55,7 @@ class FinancialAssetBase(CamelCaseModel):
 class FinancialAssetCreate(FinancialAssetBase):
     """
     Payload for creating a new asset.
-    Accepts camelCase keys (e.g., tickerSymbol, lastPrice) and
-    populates the snake_case attributes internally.
+    Accepts camelCase keys: tickerSymbol, lastPrice, marketCap, lastUpdated.
     """
     pass
 
@@ -59,7 +63,7 @@ class FinancialAssetCreate(FinancialAssetBase):
 class FinancialAsset(FinancialAssetBase):
     """
     Schema for reading an asset.
-    Adds the primary key field: asset_id (API key: assetId).
+    Adds primary key asset_id, exposed as assetId.
     Supports ORM mapping (from_attributes=True).
     """
     asset_id: str = Field(..., description="Primary key (UUID)")

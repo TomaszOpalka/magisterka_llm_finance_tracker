@@ -1,8 +1,11 @@
 """
 Pydantic schemas for Finance Track.
 
-API layer uses camelCase.
-Database layer remains snake_case.
+Database layer:
+- snake_case
+
+API layer:
+- camelCase
 """
 
 from datetime import datetime
@@ -16,8 +19,7 @@ from pydantic.alias_generators import to_camel
 
 class CamelCaseModel(BaseModel):
     """
-    Base schema enabling automatic camelCase conversion
-    for both request and response payloads.
+    Base schema with automatic camelCase conversion.
     """
 
     model_config = ConfigDict(
@@ -43,44 +45,53 @@ class FinancialAssetBase(CamelCaseModel):
     """
 
     ticker_symbol: TickerSymbol
-    last_price: float = Field(ge=0)
+
+    current_market_price: float = Field(
+        ge=0,
+        validation_alias="lastPrice",
+        serialization_alias="lastPrice",
+    )
+
     market_cap: int = Field(ge=0)
+
     last_updated: datetime | None = None
 
 
 class FinancialAssetCreate(FinancialAssetBase):
     """
-    Schema used for inbound asset creation payloads.
-
-    Accepted JSON example:
-
-    {
-        "tickerSymbol": "AAPL",
-        "lastPrice": 120.5,
-        "marketCap": 1000000000
-    }
+    Schema for asset creation payloads.
     """
 
 
 class FinancialAsset(CamelCaseModel):
     """
-    Schema used for outbound asset responses.
+    Schema for financial asset responses.
     """
 
-    asset_id: str
+    asset_id: str = Field(
+        serialization_alias="assetId",
+    )
+
     ticker_symbol: TickerSymbol
-    last_price: float
+
+    current_market_price: float = Field(
+        serialization_alias="lastPrice",
+    )
+
     market_cap: int
+
     last_updated: datetime | None = None
 
 
 class AssetAnalytics(CamelCaseModel):
     """
-    Schema for analytics response payload.
+    Schema for analytics responses.
     """
 
     ticker_symbol: str
+
     moving_average_30d: float | None
+
     rsi_14: float | None
 
 

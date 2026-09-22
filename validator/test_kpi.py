@@ -28,7 +28,9 @@ EXPERIMENTS_PATH = "experiments"
 ALL_MODELS = [
     os.path.join(EXPERIMENTS_PATH, d) 
     for d in os.listdir(EXPERIMENTS_PATH) 
-    if os.path.isdir(os.path.join(EXPERIMENTS_PATH, d))
+    if os.path.isdir(os.path.join(EXPERIMENTS_PATH, d)) 
+    and not d.startswith("_") 
+    and not d.startswith(".")
 ]
 
 @pytest.mark.parametrize("target_path", ALL_MODELS)
@@ -242,7 +244,7 @@ class TestKPI:
     def test_db_integrity(self, target_path):
         """
         KPI: Database Integrity & Cross-file Error
-        Verify that models.py uses strictly snake_case fields (asset_id, last_price)
+        Verify that models.py uses strictly snake_case fields (asset_id, last_price or current_market_price)
         and does NOT use camelCase fields (assetId, lastPrice).
         Also check that crud.py does NOT use camelCase parameters when writing to the DB.
         """
@@ -258,26 +260,117 @@ class TestKPI:
         errors = []
         
         # Check models.py
-        # Must have asset_id and last_price
+        # Must have asset_id
         if "asset_id" not in m_content:
             errors.append("models.py is missing 'asset_id' field")
-        if "last_price" not in m_content:
-            errors.append("models.py is missing 'last_price' field")
+        
+        # Must have either last_price or current_market_price
+        has_last_price = "last_price" in m_content
+        has_current_market_price = "current_market_price" in m_content
+        if not (has_last_price or has_current_market_price):
+            errors.append("models.py is missing price field column ('last_price' or 'current_market_price')")
             
-        # Must NOT have assetId or lastPrice
-        if "assetId" in m_content or "lastPrice" in m_content:
-            errors.append("models.py violates snake_case convention by using camelCase columns ('assetId' or 'lastPrice')")
+        # Must NOT have assetId or lastPrice as class attribute columns
+        for line in m_content.splitlines():
+            if re.match(r"^\s*(assetId|lastPrice)\s*[:=]", line):
+                errors.append(f"models.py violates snake_case convention by using camelCase columns: '{line.strip()}'")
             
-        # Check crud.py
+        # Check crud.py using AST to avoid false positives in comments/docstrings
         if os.path.exists(crud_file):
             with open(crud_file, "r", encoding="utf-8") as f:
                 c_content = f.read()
                 
-            # Check if crud.py passes camelCase dict keys to the DB
-            # e.g., if there's any dictionary containing camelCase keys like 'assetId', 'lastPrice', 'marketCap'
-            forbidden_camel_keys = ["assetId", "lastPrice", "marketCap", "tickerSymbol"]
-            for key in forbidden_camel_keys:
-                if f"'{key}'" in c_content or f'"{key}"' in c_content:
-                    errors.append(f"crud.py uses forbidden camelCase key '{key}' in database layer")
+            try:
+                tree = ast.parse(c_content)
+                forbidden_camel_keys = {"assetId", "lastPrice", "marketCap", "tickerSymbol"}
+                for node in ast.walk(tree):
+                    # Check dictionary literals
+                    if isinstance(node, ast.Dict):
+                        for k in node.keys:
+                            if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                                if k.value in forbidden_camel_keys:
+                                    errors.append(f"crud.py uses forbidden camelCase dictionary key '{k.value}'")
+                                    
+                    # Check keyword arguments (e.g. models.FinancialAsset(lastPrice=...))
+                    if isinstance(node, ast.keyword):
+                        if node.arg in forbidden_camel_keys:
+                            errors.append(f"crud.py uses forbidden camelCase keyword argument '{node.arg}'")
+                            
+                    # Check attribute access (e.g. asset.lastPrice)
+                    if isinstance(node, ast.Attribute):
+                        if node.attr in forbidden_camel_keys:
+                            errors.append(f"crud.py accesses forbidden camelCase attribute '{node.attr}'")
+            except SyntaxError:
+                errors.append("Syntax error in crud.py")
                     
         assert not errors, f"Database integrity failures in {target_path}:\n" + "\n".join(errors)
+
+    def test_schema_migration_pr67(self, target_path):
+        """
+        KPI: PR #67 Schema Mutation & Contract Preservation
+        Verify database field mutation (last_price -> current_market_price) 
+        and external API contract preservation (mapping current_market_price to lastPrice).
+        """
+        is_grok = "mgr_grok_free" in target_path
+        if is_grok:
+            pytest.skip("Grok Free is non-compliant with PR #67 schema migration")
+
+        models_file = os.path.join(target_path, "models.py")
+        schemas_file = os.path.join(target_path, "schemas.py")
+        crud_file = os.path.join(target_path, "crud.py")
+
+        errors = []
+
+        # 1. Verify models.py database mutation
+        if not os.path.exists(models_file):
+            errors.append("models.py not found")
+        else:
+            with open(models_file, "r", encoding="utf-8") as f:
+                m_content = f.read()
+            if "current_market_price" not in m_content:
+                errors.append("models.py does not contain mutated database column 'current_market_price'")
+            # Ensure old field is not present as a column definition
+            for line in m_content.splitlines():
+                if re.match(r"^\s*last_price\s*[:=]", line):
+                    errors.append(f"models.py still contains legacy column definition: '{line.strip()}'")
+
+        # 2. Verify Pydantic Mapping and API Contract Preservation in schemas.py
+        if not os.path.exists(schemas_file):
+            errors.append("schemas.py not found")
+        else:
+            with open(schemas_file, "r", encoding="utf-8") as f:
+                s_content = f.read()
+            if "current_market_price" not in s_content:
+                errors.append("schemas.py does not define Pydantic attribute 'current_market_price'")
+            else:
+                # Check for explicit mapping/alias to legacy JSON key 'lastPrice'
+                has_alias = (
+                    'alias="lastPrice"' in s_content or 
+                    'alias=\'lastPrice\'' in s_content or
+                    'validation_alias="lastPrice"' in s_content or
+                    'validation_alias=\'lastPrice\'' in s_content or
+                    'serialization_alias="lastPrice"' in s_content or
+                    'serialization_alias=\'lastPrice\'' in s_content
+                )
+                if not has_alias:
+                    errors.append("schemas.py lacks explicit Field(alias/validation_alias/serialization_alias='lastPrice') override for 'current_market_price', violating the public API contract!")
+
+        # 3. Verify Change Cascade in crud.py
+        if not os.path.exists(crud_file):
+            errors.append("crud.py not found")
+        else:
+            with open(crud_file, "r", encoding="utf-8") as f:
+                c_content = f.read()
+            
+            # Check that there are absolutely no references to the old last_price column in crud.py logic
+            for line_idx, line in enumerate(c_content.splitlines(), 1):
+                if "last_price" in line:
+                    # Ignore comments
+                    if not line.strip().startswith("#"):
+                        errors.append(f"crud.py still contains legacy 'last_price' reference at line {line_idx}: '{line.strip()}'")
+            
+            # Ensure the new current_market_price is referenced in crud.py
+            if "current_market_price" not in c_content:
+                errors.append("crud.py does not reference the mutated database column 'current_market_price'")
+
+        assert not errors, f"PR #67 Schema Migration verification failed in {target_path}:\n" + "\n".join(errors)

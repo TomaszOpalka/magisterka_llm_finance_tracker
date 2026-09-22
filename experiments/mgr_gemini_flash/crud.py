@@ -1,65 +1,37 @@
 import uuid
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import asc, desc
-
+from sqlalchemy import update
+from typing import List, Optional
 import models
 import schemas
-from services import get_stock_price
+import services
 from utils import logger
 
-async def get_assets(
-    db: AsyncSession, 
-    skip: int = 0, 
-    limit: int = 10, 
-    min_price: float = None, 
-    sort_by: str = "ticker_symbol"
-):
-    """
-    Retrieves a list of financial assets with support for pagination, 
-    price filtering, and dynamic sorting.
-    """
-    query = select(models.FinancialAsset)
-
-    # Filtering by minimum price
-    if min_price is not None:
-        query = query.where(models.FinancialAsset.last_price >= min_price)
-
-    # Dynamic sorting
-    if hasattr(models.FinancialAsset, sort_by):
-        column = getattr(models.FinancialAsset, sort_by)
-        query = query.order_by(column)
-    else:
-        query = query.order_by(models.FinancialAsset.ticker_symbol)
-
-    query = query.offset(skip).limit(limit)
+async def get_assets(db: AsyncSession, skip: int = 0, limit: int = 10) -> List[models.FinancialAsset]:
+    """Retrieves localized registry records out of the tracking entity map."""
+    query = select(models.FinancialAsset).offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    return list(result.scalars().all())
 
-async def get_asset_by_ticker(db: AsyncSession, ticker: str):
-    """
-    Retrieves a single asset record by its unique ticker symbol.
-    """
-    query = select(models.FinancialAsset).where(
-        models.FinancialAsset.ticker_symbol == ticker.upper()
-    )
+async def get_asset_by_ticker(db: AsyncSession, ticker_symbol: str) -> Optional[models.FinancialAsset]:
+    """Retrieves an individual asset record matching an uppercase target ticker."""
+    query = select(models.FinancialAsset).where(models.FinancialAsset.ticker_symbol == ticker_symbol.upper())
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
-async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate):
+async def create_asset(db: AsyncSession, asset_schema: schemas.FinancialAssetCreate) -> models.FinancialAsset:
     """
-    Creates a new financial asset. 
-    Explicitly generates a UUID for asset_id to fulfill the primary key requirement.
+    Accepts Pydantic verification metrics and persists them to the storage layer.
+    Upholds system isolation rules by mapping schema inputs to current_market_price.
+    Generates string asset_id to supply client assetId.
     """
     db_asset = models.FinancialAsset(
         asset_id=str(uuid.uuid4()),
-        ticker_symbol=asset.ticker_symbol.upper(),
-        last_price=asset.last_price,
-        market_cap=asset.market_cap,
-        last_updated=datetime.now()
+        ticker_symbol=asset_schema.ticker_symbol.upper(),
+        current_market_price=asset_schema.current_market_price,
+        market_cap=asset_schema.market_cap
     )
-    
     db.add(db_asset)
     await db.commit()
     await db.refresh(db_asset)
@@ -67,19 +39,24 @@ async def create_asset(db: AsyncSession, asset: schemas.FinancialAssetCreate):
 
 async def update_all_assets_prices(db: AsyncSession) -> int:
     """
-    Iterates through all assets and updates their current market price 
-    via the external Stock Service.
+    Scans stored asset entities, executes asynchronous queries to pull live
+    market updates, and persists findings to current_market_price fields.
     """
-    result = await db.execute(select(models.FinancialAsset))
-    assets = result.scalars().all()
-    
-    updated_count = 0
+    logger.info("Executing global bulk pricing update task.")
+    assets = await get_assets(db, skip=0, limit=1000)
+    updated_records = 0
+
     for asset in assets:
-        new_price = await get_stock_price(asset.ticker_symbol)
-        if new_price:
-            asset.last_price = new_price
-            asset.last_updated = datetime.now()
-            updated_count += 1
-            
+        fresh_price = await services.get_stock_price(asset.ticker_symbol)
+        if fresh_price is not None:
+            query = (
+                update(models.FinancialAsset)
+                .where(models.FinancialAsset.asset_id == asset.asset_id)
+                .values(current_market_price=fresh_price)
+            )
+            await db.execute(query)
+            updated_records += 1
+
     await db.commit()
-    return updated_count
+    logger.info(f"Price updates committed successfully. Updated lines: {updated_records}")
+    return updated_records

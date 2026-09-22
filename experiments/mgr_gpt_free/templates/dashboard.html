@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Finance Track Cosmic UI</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            background:
+                radial-gradient(circle at top left, #1e1b4b, transparent 40%),
+                radial-gradient(circle at bottom right, #0f172a, transparent 40%),
+                linear-gradient(135deg, #020617, #0f172a);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .neon-border {
+            border: 1px solid rgba(34, 211, 238, 0.4);
+            box-shadow:
+                0 0 10px rgba(34, 211, 238, 0.3),
+                0 0 25px rgba(168, 85, 247, 0.25);
+        }
+
+        .neon-button {
+            background: linear-gradient(
+                90deg,
+                #06b6d4,
+                #8b5cf6
+            );
+            transition: all 0.3s ease;
+        }
+
+        .neon-button:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 0 15px rgba(34, 211, 238, 0.6),
+                0 0 30px rgba(168, 85, 247, 0.5);
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top: 3px solid #22d3ee;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="text-white font-sans">
+
+<div class="max-w-7xl mx-auto px-6 py-10">
+
+    <div class="mb-10">
+        <h1 class="text-5xl font-black tracking-tight">
+            Finance Track
+        </h1>
+
+        <p class="text-cyan-300 mt-3 text-lg">
+            Cosmic UI • Async Market Intelligence Dashboard
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+
+        <div class="glass neon-border rounded-2xl p-6">
+            <div class="text-sm text-slate-400">
+                System Status
+            </div>
+
+            <div
+                id="system-status"
+                class="text-2xl font-bold text-cyan-300 mt-2"
+            >
+                ONLINE
+            </div>
+        </div>
+
+        <div class="glass neon-border rounded-2xl p-6">
+            <div class="text-sm text-slate-400">
+                Total Assets
+            </div>
+
+            <div
+                id="total-assets"
+                class="text-2xl font-bold text-purple-300 mt-2"
+            >
+                0
+            </div>
+        </div>
+
+        <div class="glass neon-border rounded-2xl p-6 flex items-center justify-between">
+            <div>
+                <div class="text-sm text-slate-400">
+                    Market Synchronization
+                </div>
+
+                <div class="text-xl font-bold mt-2">
+                    Live Update
+                </div>
+            </div>
+
+            <button
+                id="sync-button"
+                class="neon-button px-6 py-3 rounded-xl font-bold"
+            >
+                Sync
+            </button>
+        </div>
+    </div>
+
+    <div class="glass neon-border rounded-2xl overflow-hidden">
+
+        <div class="p-6 border-b border-slate-700">
+            <h2 class="text-2xl font-bold">
+                Tracked Assets
+            </h2>
+        </div>
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full">
+                <thead class="bg-slate-900/80">
+                    <tr>
+                        <th class="text-left px-6 py-4">
+                            Asset ID
+                        </th>
+
+                        <th class="text-left px-6 py-4">
+                            Ticker
+                        </th>
+
+                        <th class="text-left px-6 py-4">
+                            Last Price
+                        </th>
+
+                        <th class="text-left px-6 py-4">
+                            Market Cap
+                        </th>
+
+                        <th class="text-left px-6 py-4">
+                            Last Updated
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody id="assets-table-body">
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    const assetsTableBody = document.getElementById(
+        "assets-table-body"
+    );
+
+    const totalAssetsElement = document.getElementById(
+        "total-assets"
+    );
+
+    const syncButton = document.getElementById(
+        "sync-button"
+    );
+
+    function formatMarketCap(value) {
+        if (value >= 1_000_000_000_000) {
+            return (
+                (value / 1_000_000_000_000).toFixed(2)
+                + "T"
+            );
+        }
+
+        if (value >= 1_000_000_000) {
+            return (
+                (value / 1_000_000_000).toFixed(2)
+                + "B"
+            );
+        }
+
+        if (value >= 1_000_000) {
+            return (
+                (value / 1_000_000).toFixed(2)
+                + "M"
+            );
+        }
+
+        return value.toString();
+    }
+
+    async function loadAssets() {
+        try {
+            const response = await fetch("/assets");
+
+            const assets = await response.json();
+
+            totalAssetsElement.innerText =
+                assets.length;
+
+            assetsTableBody.innerHTML = "";
+
+            assets.forEach(asset => {
+                const row = document.createElement("tr");
+
+                row.className =
+                    "border-b border-slate-800 hover:bg-slate-900/50";
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-cyan-300">
+                        ${asset.assetId}
+                    </td>
+
+                    <td class="px-6 py-4 font-bold">
+                        ${asset.tickerSymbol}
+                    </td>
+
+                    <td class="px-6 py-4 text-green-400">
+                        $${asset.lastPrice.toFixed(2)}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        ${formatMarketCap(asset.marketCap)}
+                    </td>
+
+                    <td class="px-6 py-4 text-slate-400">
+                        ${asset.lastUpdated ?? "N/A"}
+                    </td>
+                `;
+
+                assetsTableBody.appendChild(row);
+            });
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function synchronizeAssets() {
+
+        syncButton.disabled = true;
+
+        syncButton.innerHTML = `
+            <div class="flex items-center gap-2">
+                <div class="spinner"></div>
+                Syncing
+            </div>
+        `;
+
+        try {
+            await fetch("/assets/sync", {
+                method: "POST",
+            });
+
+            await loadAssets();
+
+        } catch (error) {
+            console.error(error);
+
+        } finally {
+
+            syncButton.disabled = false;
+
+            syncButton.innerHTML = "Sync";
+        }
+    }
+
+    syncButton.addEventListener(
+        "click",
+        synchronizeAssets,
+    );
+
+    loadAssets();
+</script>
+
+</body>
+</html>

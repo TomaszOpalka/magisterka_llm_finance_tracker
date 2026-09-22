@@ -88,10 +88,10 @@ async def test_create_and_get_asset(
     Integration test for asset creation and retrieval.
     """
     payload = {
-        "ticker_symbol": "MSFT",
-        "last_price": 150.0,
-        "market_cap": 3000000000000,
-        "last_updated": None,
+        "tickerSymbol": "MSFT",
+        "lastPrice": 150.0,
+        "marketCap": 3000000000000,
+        "lastUpdated": None,
     }
 
     # Create asset
