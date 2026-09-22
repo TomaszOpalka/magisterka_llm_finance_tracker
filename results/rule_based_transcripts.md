@@ -1,0 +1,653 @@
+# Rule-based baseline - full transcripts
+
+System: ELIZA (nltk.chat.eliza), seed=20260922. Every research prompt was sent turn by turn, exactly as it was sent to the language models.
+
+## p1
+- **USER:** „Rozpoczynamy eksperyment badawczy systemu 'Finance Track'. Architektura musi być modularna. Komunikuj się wyłącznie w języku polskim.
+- **ELIZA:** Very interesting.
+- **USER:** ZADANIE: Fundamenty Bazy Danych
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Przygotuj kod dla dwóch plików zgodnie ze standardami PEP 8:
+- **ELIZA:** How does that make you feel?
+- **USER:** database.py:
+- **ELIZA:** Please tell me more.
+- **USER:** Użyj SQLAlchemy 2.0+.
+- **ELIZA:** How does that make you feel?
+- **USER:** Skonfiguruj asynchroniczny silnik (create_async_engine) dla bazy SQLite (plik: finance.db).
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Przygotuj async_sessionmaker.
+- **ELIZA:** How does that make you feel?
+- **USER:** models.py:
+- **ELIZA:** How does that make you feel?
+- **USER:** Stwórz klasę bazową Base (używając DeclarativeBase).
+- **ELIZA:** Please tell me more.
+- **USER:** Zdefiniuj tabelę financial_assets.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Nazewnictwo pól (STRICT snake_case):
+- **ELIZA:** How do you feel when you say that?
+- **USER:** asset_id: String, Primary Key (UWAGA: Nie używaj nazwy 'id', musi to być 'asset_id').
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** ticker_symbol: String, Unique, Indexed.
+- **ELIZA:** ticker_symbol: string, unique, indexed..
+- **USER:** last_price: Float.
+- **ELIZA:** Please tell me more.
+- **USER:** market_cap: BigInteger.
+- **ELIZA:** How does that make you feel?
+- **USER:** Wszystkie komentarze w kodzie muszą być po polsku. Nie generuj jeszcze logiki API ani pobierania danych – skup się wyłącznie na tych dwóch plikach.”
+- **ELIZA:** How do you feel when you say that?
+
+## p2
+- **USER:** „Kontynuujemy budowę systemu 'Finance Track'. Architektura musi pozostać modularna, dlatego teraz przechodzimy do zdefiniowania warstwy walidacji danych. Komunikuj się wyłącznie w języku polskim.
+- **ELIZA:** Why do you say that „kontynuujemy budowę systemu 'finance track'. architektura musi pozostać modularna, dlatego teraz przechodzimy do zdefiniowania warstwy walidacji danych. komunikuj się wyłącznie w języku polskim.?
+- **USER:** ZADANIE: Implementacja Pydantic v2
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Stwórz plik schemas.py, w którym zdefiniujesz modele danych przy użyciu biblioteki Pydantic v2.
+- **ELIZA:** How does that make you feel?
+- **USER:** Wymagania techniczne:
+- **ELIZA:** How does that make you feel?
+- **USER:** Stwórz bazowy schemat FinancialAssetBase, który zawiera pola zgodne z naszą strukturą bazy danych (wszystkie w snake_case):
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** ticker_symbol (str)
+- **ELIZA:** How does that make you feel?
+- **USER:** last_price (float)
+- **ELIZA:** Why do you say that last_price (float)?
+- **USER:** market_cap (int)
+- **ELIZA:** market_cap (int).
+- **USER:** Stwórz schemat FinancialAssetCreate (dziedziczący po bazie).
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Stwórz schemat FinancialAsset (do odczytu), który dodatkowo zawiera pole:
+- **ELIZA:** I see.
+- **USER:** asset_id (str) – pamiętaj, aby nie używać nazwy 'id'.
+- **ELIZA:** I see.
+- **USER:** W schemacie FinancialAsset włącz tryb wsparcia dla ORM (from_attributes=True), aby umożliwić współpracę z modelami SQLAlchemy.
+- **ELIZA:** I see.
+- **USER:** Pamiętaj o dodaniu odpowiednich typów (Type Hints) oraz komentarzy w języku polskim wyjaśniających przeznaczenie każdego schematu.”
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+
+## p3
+- **USER:** Prompt 3: Warstwa CRUD i Inicjalizacja FastAPI
+- **ELIZA:** prompt 3: warstwa crud you inicjalizacja fastapi.
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** Very interesting.
+- **USER:** „Kontynuujemy budowę systemu 'Finance Track'. Mamy już zdefiniowane modele SQLAlchemy oraz schematy Pydantic. Teraz musimy połączyć te elementy w działającą strukturę API. Komunikuj się wyłącznie w języku polskim.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** ZADANIE: Implementacja CRUD i FastAPI
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Przygotuj kod dla dwóch kolejnych plików, dbając o poprawne importy między modułami:
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** crud.py:
+- **ELIZA:** crud.py:.
+- **USER:** Zaimplementuj asynchroniczną funkcję get_assets, która pobiera wszystkie rekordy z tabeli financial_assets.
+- **ELIZA:** I see.
+- **USER:** Zaimplementuj asynchroniczną funkcję create_asset, która przyjmuje obiekt FinancialAssetCreate i zapisuje go w bazie danych.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** UWAGA: Pamiętaj, że klucz główny to asset_id – upewnij się, że operacje CRUD go uwzględniają.
+- **ELIZA:** Why do you say that uwaga: pamiętaj, że klucz główny to asset_id – upewnij się, że operacje crud go uwzględniają.?
+- **USER:** main.py:
+- **ELIZA:** Why do you say that main.py:?
+- **USER:** Zainicjalizuj aplikację FastAPI.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Stwórz podstawowy endpoint GET /assets, który korzystając z funkcji z crud.py, zwróci listę aktywów.
+- **ELIZA:** Very interesting.
+- **USER:** Stwórz endpoint POST /assets, który pozwoli na dodanie nowego aktywa.
+- **ELIZA:** I see.
+- **USER:** Wykorzystaj asynchroniczny generator sesji (get_db) do wstrzykiwania zależności (Dependency Injection) do endpointów.
+- **ELIZA:** Please tell me more.
+- **USER:** Pamiętaj o obsłudze wyjątków oraz zachowaniu czystości kodu zgodnie z PEP 8. Komentarze w kodzie muszą być w języku polskim.”
+- **ELIZA:** Can you elaborate on that?
+
+## p3.1
+- **USER:** dla modelu deepseek koniecność wprowadzenia korekty
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Return type of async generator function must be compatible with "AsyncGenerator[Any, Any]"
+- **ELIZA:** How do you feel when you say that?
+- **USER:** "AsyncGenerator[Any, Any, Any]" is not assignable to "AsyncSession"
+- **ELIZA:** How does that make you feel?
+- **USER:** Aplikacja wyrzuca błąd sqlite3.OperationalError: no such table: financial_assets, ponieważ tabele nie zostały zainicjalizowane w bazie. Popraw plik main.py, tak aby przy starcie aplikacji
+- **ELIZA:** Please tell me more.
+- **USER:** (używając dekoratora @app.on_event("startup") lub nowszego mechanizmu lifespan) system automatycznie tworzył tabele w bazie danych przy użyciu Base.metadata.create_all (pamiętaj o asynchroniczności!)
+- **ELIZA:** Can you elaborate on that?
+
+## p4
+- **USER:** Prompt 4: Automatyzacja schematu i Lifecycle Management
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** Please tell me more.
+- **USER:** „Kontynuujemy projekt 'Finance Track'. Mamy już warstwę bazodanową, modele i endpointy. Teraz musimy zapewnić, aby system był gotowy do uruchomienia bez ręcznego tworzenia tabel w bazie danych. Rozmawiaj ze mną wyłącznie po polsku.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** ZADANIE: Inicjalizacja bazy i Lifespan aplikacji
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Zmodyfikuj plik main.py oraz database.py (jeśli to konieczne), aby uwzględnić następujące wymagania:
+- **ELIZA:** Why do you say that zmodyfikuj plik main.py oraz database.py (jeśli to konieczne), aby uwzględnić następujące wymagania:?
+- **USER:** Automatyczne tworzenie tabel: Przy starcie aplikacji system powinien sprawdzić, czy tabela financial_assets istnieje w pliku finance.db, a jeśli nie – stworzyć ją asynchronicznie, korzystając z Base.metadata.create_all.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** FastAPI Lifespan: Użyj dekoratora @asynccontextmanager (lub nowoczesnego podejścia lifespan w FastAPI), aby zarządzać procesem uruchamiania (startup) bazy danych.
+- **ELIZA:** Why do you say that fastapi lifespan: użyj dekoratora @asynccontextmanager (lub nowoczesnego podejścia lifespan w fastapi), aby zarządzać procesem uruchamiania (startup) bazy danych.?
+- **USER:** Endpoint testowy (Healthcheck): Dodaj prosty endpoint GET /status, który zwróci informację: {"status": "ok", "database": "connected"}.
+- **ELIZA:** Please tell me more.
+- **USER:** Weryfikacja Nomenklatury: Upewnij się, że w logach startowych lub komentarzach używasz nazwy klucza głównego asset_id zgodnie z naszym kontraktem.
+- **ELIZA:** I see.
+- **USER:** Pamiętaj, aby kod był asynchroniczny i zgodny z dokumentacją SQLAlchemy 2.0. Wszystkie komentarze i komunikaty muszą być w języku polskim.”
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+
+## p5
+- **USER:** Prompt 5: Narzędzia pomocnicze i Logger
+- **ELIZA:** How does that make you feel?
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** „Kończymy pierwszy etap budowy systemu 'Finance Track'. Wszystkie dotychczasowe pliki (models.py, schemas.py, crud.py, main.py) muszą ze sobą współpracować w sposób asynchroniczny. Rozmawiaj ze mną wyłącznie po polsku.
+- **ELIZA:** Very interesting.
+- **USER:** ZADANIE: Implementacja warstwy pomocniczej i logowania
+- **ELIZA:** Very interesting.
+- **USER:** Przygotuj plik utils.py, który będzie zawierał:
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Konfigurację Loggera: Skonfiguruj standardową bibliotekę logging tak, aby zapisywała zdarzenia do pliku finance.log oraz wyświetlała je w konsoli. Komunikaty logów powinny być w języku polskim (np. 'Uruchomienie systemu', 'Dodano nowe aktywo').
+- **ELIZA:** Please tell me more.
+- **USER:** Funkcję formatującą: Prostą funkcję, która przyjmuje wartość liczbową market_cap i zwraca ją w czytelnym formacie tekstowym (np. skróty 'mld' dla miliardów).
+- **ELIZA:** Very interesting.
+- **USER:** Weryfikacja Nomenklatury: Upewnij się, że Logger odwołuje się do klucza głównego jako asset_id w komunikatach dotyczących bazy danych.
+- **ELIZA:** How does that make you feel?
+- **USER:** Zaktualizuj plik main.py:
+- **ELIZA:** Very interesting.
+- **USER:** Zaimportuj loggera i dodaj logowanie informacji o pomyślnym starcie aplikacji wewnątrz funkcji lifespan.
+- **ELIZA:** I see.
+- **USER:** Dodaj obsługę błędu HTTPException, która również będzie logowana przed wysłaniem odpowiedzi do klienta.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Pamiętaj, aby kod był asynchroniczny tam, gdzie to konieczne, zgodny z SQLAlchemy 2.0+ i zawierał komentarze wyłącznie w języku polskim.”
+- **ELIZA:** Why do you say that pamiętaj, aby kod był asynchroniczny tam, gdzie to konieczne, zgodny z sqlalchemy 2.0+ you zawierał komentarze wyłącznie w języku polskim.”?
+
+## p6
+- **USER:** Prompt 6: Implementacja niestandardowych wyjątków i walidacji biznesowej
+- **ELIZA:** How do you feel when you say that?
+- **USER:** „Kontynuujemy projekt 'Finance Track'. Nasza architektura modularna wymaga teraz ujednoliconego sposobu obsługi błędów biznesowych, aby zapewnić spójność odpowiedzi API.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** ZADANIE: Niestandardowe wyjątki i Middleware
+- **ELIZA:** Very interesting.
+- **USER:** Stwórz plik exceptions.py, w którym zdefiniujesz klasę bazową FinanceException(Exception) oraz klasy pochodne, takie jak AssetNotFoundException czy DatabaseConnectionException.
+- **ELIZA:** Please tell me more.
+- **USER:** Każdy wyjątek powinien przechowywać kod błędu (status_code) oraz szczegółowy komunikat.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Zaktualizuj plik main.py, dodając handlery dla tych wyjątków (@app.exception_handler), które będą automatycznie zwracać odpowiedź JSON do klienta oraz logować błąd przy użyciu loggera z utils.py.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** W komunikatach błędów logowania upewnij się, że odwołujesz się do identyfikatora zasobu jako asset_id.
+- **ELIZA:** How does that make you feel?
+- **USER:** Zmodyfikuj endpoint GET /assets w main.py tak, aby w przypadku braku danych w bazie rzucał wyjątek AssetNotFoundException.”
+- **ELIZA:** How do you feel when you say that?
+
+## p7
+- **USER:** Prompt 7: Zarządzanie konfiguracją (pydantic-settings)
+- **ELIZA:** Why do you say that prompt 7: zarządzanie konfiguracją (pydantic-settings)?
+- **USER:** Zgodnie z planem, wchodzimy w detale konfiguracyjne. To test na to, czy model potrafi wprowadzić profesjonalne zarządzanie zmiennymi środowiskowymi bez psucia modularności.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** „Kontynuujemy projekt 'Finance Track'. Nasza aplikacja staje się coraz bardziej złożona,
+- **ELIZA:** Very interesting.
+- **USER:** dlatego musimy odejść od twardego kodowania parametrów na rzecz profesjonalnego zarządzania konfiguracją.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** ZADANIE: Implementacja Pydantic-SettingsStwórz plik config.py, w którym przy użyciu pydantic-settings (klasa BaseSettings)
+- **ELIZA:** How does that make you feel?
+- **USER:** zdefiniujesz konfigurację aplikacji.Parametry do skonfigurowania:DATABASE_URL: Adres do bazy SQLite
+- **ELIZA:** I see.
+- **USER:** (domyślnie: sqlite+aiosqlite:///./finance.db).APP_NAME: Nazwa aplikacji (domyślnie: 'Finance Track').LOG_LEVEL: Poziom logowania (domyślnie: 'INFO').
+- **ELIZA:** Why do you say that (domyślnie: sqlite+aiosqlite:///./finance.db).app_name: nazwa aplikacji (domyślnie: 'finance track').log_level: poziom logowania (domyślnie: 'info').?
+- **USER:** Klasa powinna automatycznie wczytywać dane z pliku .env.Zaktualizuj plik database.py, aby importował DATABASE_URL bezpośrednio z nowej klasy
+- **ELIZA:** klasa powinna automatycznie wczytywać dane z pliku .env.zaktualizuj plik database.py, aby importował database_url bezpośrednio z nowej klasy.
+- **USER:** ustawień w config.py.
+- **ELIZA:** Please tell me more.
+- **USER:** Upewnij się, że zachowujesz asynchroniczny charakter połączenia i nie zmieniasz nazewnictwa klucza głównego asset_id w żadnym z plików.”
+- **ELIZA:** How do you feel when you say that?
+
+## p7.1
+- **USER:** Dedykowany prompt naprawczy dla  gemini PRO
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** "zapomniałeś o czymś nie stworzyłeś pliku .env"
+- **ELIZA:** Please tell me more.
+
+## p8
+- **USER:** Prompt 8: Zaawansowana Walidacja i Mapowanie Typów
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** „Kontynuujemy projekt 'Finance Track'. Aby przyspieszyć rozwój i zapewnić najwyższą jakość kodu, musimy zoptymalizować nasze schematy Pydantic pod kątem rygorystycznej walidacji i przygotować je do obsługi rzeczywistych danych rynkowych.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** ZADANIE: Rozbudowa schemas.py i walidacja biznesowa
+- **ELIZA:** How does that make you feel?
+- **USER:** Zmodyfikuj plik schemas.py:
+- **ELIZA:** Please tell me more.
+- **USER:** Dodaj walidację dla ticker_symbol – musi składać się wyłącznie z wielkich liter i mieć długość od 1 do 5 znaków (użyj Field(pattern=...) lub Annotated).
+- **ELIZA:** Very interesting.
+- **USER:** Dodaj walidację dla last_price – cena nie może być ujemna.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Wprowadź pole last_updated, które będzie automatycznie przyjmować datę i czas (datetime) z domyślną wartością None.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Zaktualizuj plik models.py:
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Dodaj kolumnę last_updated typu DateTime z parametrem server_default=func.now().
+- **ELIZA:** How does that make you feel?
+- **USER:** Zaktualizuj plik crud.py:
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Funkcja create_asset musi teraz obsługiwać pole last_updated.
+- **ELIZA:** I see.
+- **USER:** Weryfikacja rygoru: Upewnij się, że w żadnym miejscu nie zmieniłeś nazwy asset_id na id oraz że zachowujesz pełną asynchroniczność i polskie komentarze.”
+- **ELIZA:** Very interesting.
+
+## p9
+- **USER:** Prompt 9: Interwencja Korygująca i Migracja Schema
+- **ELIZA:** Very interesting.
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** Very interesting.
+- **USER:** „UWAGA: Podczas wdrażania poprzednich zmian wystąpiły błędy krytyczne, które musisz natychmiast naprawić. Komunikuj się wyłącznie po polsku.
+- **ELIZA:** Please tell me more.
+- **USER:** ZADANIE: Naprawa błędów i migracja bazy
+- **ELIZA:** zadanie: naprawa błędów you migracja bazy.
+- **USER:** Naprawa Importów: Upewnij się, że w models.py oraz schemas.py zaimportowałeś wszystkie niezbędne moduły, w tym datetime z biblioteki standardowej oraz func z SQLAlchemy.
+- **ELIZA:** How does that make you feel?
+- **USER:** Rygor Nomenklatury: Absolutnie zabraniam zmiany klucza głównego. Musi to być asset_id (String), a nie ticker_symbol ani id. Popraw to w models.py i crud.py.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Migracja (Kluczowe): Ponieważ SQLite nie aktualizuje schematu automatycznie przy create_all, zmodyfikuj mechanizm startowy w database.py lub main.py. Przy starcie aplikacji, jeśli kolumna last_updated nie istnieje w tabeli financial_assets, wykonaj surowe zapytanie SQL (Alembic nie jest używany): ALTER TABLE financial_assets ADD COLUMN last_updated DATETIME;.
+- **ELIZA:** Please tell me more.
+- **USER:** Asynchroniczność: Cała operacja ALTER TABLE musi zostać wykonana na asynchronicznym połączeniu.
+- **ELIZA:** How does that make you feel?
+- **USER:** Potwierdź poprawienie błędów, generując czyste, kompletne pliki models.py, crud.py oraz poprawioną sekcję startową w main.py.”
+- **ELIZA:** Can you elaborate on that?
+
+## p10
+- **USER:** Prompt 10: Zaawansowane zapytania, Paginacja i Sortowanie
+- **ELIZA:** Please tell me more.
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** I see.
+- **USER:** „Aplikacja 'Finance Track' musi teraz obsługiwać profesjonalne metody filtrowania danych, aby przygotować się na dużą ilość rekordów z S&P 500. Komunikuj się wyłącznie po polsku.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** ZADANIE: Rozbudowa endpointu GET /assets
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Modyfikacja crud.py:
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Zaktualizuj funkcję get_assets, aby przyjmowała parametry: skip (domyślnie 0), limit (domyślnie 10), min_price (opcjonalny float) oraz sort_by (opcjonalny string, domyślnie po ticker_symbol).
+- **ELIZA:** Please tell me more.
+- **USER:** Zapytanie musi być asynchroniczne i korzystać z metody select().
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Modyfikacja main.py:
+- **ELIZA:** modyfikacja main.py:.
+- **USER:** Endpoint GET /assets musi teraz przyjmować te parametry jako Query Parameters.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Dodaj walidację: limit nie może przekraczać 100.
+- **ELIZA:** dodaj walidację: limit nie może przekraczać 100..
+- **USER:** Zapewnienie spójności:
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Upewnij się, że sortowanie po asset_id działa poprawnie (jeśli użytkownik tego zażąda).
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** W odpowiedzi API musi zostać zachowana dotychczasowa struktura Pydantic (snake_case).
+- **ELIZA:** Very interesting.
+- **USER:** Pamiętaj o zachowaniu standardów PEP 8, asynchroniczności i komentarzach w języku polskim.”
+- **ELIZA:** Very interesting.
+
+## p11
+- **USER:** Mega-Prompt 11: Stock Integration & Total English
+- **ELIZA:** Please tell me more.
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** treść do wklejenia modelowi:.
+- **USER:** "We are accelerating the 'Finance Track' project. From now on, everything in the code – including comments, docstrings, and loggers – must be in English only. Please explain your logic to me in Polish under the code block.
+- **ELIZA:** How does that make you feel?
+- **USER:** TASK: Stock Data Integration & Async Services
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** services.py: Create a new module with an async function get_stock_price(ticker: str). Use the yfinance library.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** CRITICAL: Since yfinance is synchronous, you must wrap the call in asyncio.to_thread to prevent blocking the FastAPI event loop.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Handle cases where the ticker is invalid or the API is down by returning None or raising a custom exception.
+- **ELIZA:** How does that make you feel?
+- **USER:** crud.py: Add an async function update_all_assets_prices(db: AsyncSession). It should:
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Fetch all assets from the database.
+- **ELIZA:** fetch all assets from the database..
+- **USER:** Iterate through assets and update each last_price using the new service.
+- **ELIZA:** Why do you say that iterate through assets and update each last_price using the new service.?
+- **USER:** Ensure the last_updated field is refreshed.
+- **ELIZA:** ensure the last_updated field is refreshed..
+- **USER:** Commit changes at the end of the batch.
+- **ELIZA:** How does that make you feel?
+- **USER:** main.py:
+- **ELIZA:** I see.
+- **USER:** Add a POST endpoint /assets/sync to trigger the mass price update.
+- **ELIZA:** I see.
+- **USER:** Add a GET endpoint /assets/{ticker_symbol} to fetch a single asset's details.
+- **ELIZA:** Please tell me more.
+- **USER:** CRITICAL: Ensure get_db return type is AsyncGenerator[AsyncSession, None].
+- **ELIZA:** Very interesting.
+- **USER:** CRITICAL: Verify that the lifespan event correctly initializes the database tables using Base.metadata.create_all via conn.run_sync.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Requirements: Use SQLAlchemy 2.0, Pydantic v2, and maintain the asset_id (String) as the primary key. Do not use 'id'. All code must be asynchronous and PEP 8 compliant."
+- **ELIZA:** Please tell me more.
+
+## p12
+- **USER:** Mega-Prompt 12: Robust Error Handling & API Validator
+- **ELIZA:** Please tell me more.
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** Why do you say that treść do wklejenia modelowi:?
+- **USER:** "We are finishing the core functionality of the 'Finance Track' system. I need the application to be production-ready and fully testable. Everything in the code must be in English. Explain your logic in Polish under the code block.
+- **ELIZA:** Please tell me more.
+- **USER:** TASK: Error Resilience & Automation Test Script
+- **ELIZA:** Can you elaborate on that?
+- **USER:** main.py (Refactor):
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Add a global exception handler for yfinance errors (e.g., when the library returns an empty DataFrame or connection fails).
+- **ELIZA:** How does that make you feel?
+- **USER:** Ensure that if get_stock_price returns None, the /assets/sync endpoint logs a warning and continues with the next ticker instead of crashing the whole process.
+- **ELIZA:** Very interesting.
+- **USER:** test_api.py (New File):
+- **ELIZA:** Why do you say that test_api.py (new file):?
+- **USER:** Create a standalone, asynchronous test script using the httpx library.
+- **ELIZA:** create a standalone, asynchronous test script using the httpx library..
+- **USER:** The script should:
+- **ELIZA:** Why do you say that the script should:?
+- **USER:** First, create a test asset (e.g., 'AAPL') via POST /assets.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Second, trigger the synchronization via POST /assets/sync.
+- **ELIZA:** How does that make you feel?
+- **USER:** Third, fetch the asset via GET /assets/AAPL and assert that last_price is no longer 0 and last_updated is not null.
+- **ELIZA:** Please tell me more.
+- **USER:** Use asyncio.run() to execute the test.
+- **ELIZA:** use asyncio.run() to execute the test..
+- **USER:** CRITICAL REQUIREMENTS:
+- **ELIZA:** I see.
+- **USER:** Maintain the asset_id naming convention (DO NOT use 'id').
+- **ELIZA:** Why do you say that maintain the asset_id naming convention (do not use 'id').?
+- **USER:** Ensure the test script points to [http://127.0.0.1:8000](http://127.0.0.1:8000).
+- **ELIZA:** Very interesting.
+- **USER:** All comments in English. Use SQLAlchemy 2.0 and Pydantic v2 standards."
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+
+## p13
+- **USER:** Prompt 13: Financial Analytics & Historical Series
+- **ELIZA:** prompt 13: financial analytics & historical series.
+- **USER:** Treść do wklejenia modelowi:
+- **ELIZA:** I see.
+- **USER:** "Continuing the 'Finance Track' project. We need to add analytical capabilities to our system to provide more value than just raw data. Everything in the code must be in English. Explain your logic in Polish under the code block.
+- **ELIZA:** "continuing the 'finance track' project. we need to add analytical capabilities to our system to provide more value than just raw data. everything in the code must be in english. explain my logic in polish under the code block..
+- **USER:** TASK: Moving Average Analytics & History
+- **ELIZA:** Can you elaborate on that?
+- **USER:** services.py: Add an async function get_historical_data(ticker: str, days: int = 30).
+- **ELIZA:** Can you elaborate on that?
+- **USER:** It must fetch historical closing prices using yfinance for the specified period.
+- **ELIZA:** How does that make you feel?
+- **USER:** Use asyncio.to_thread to keep it non-blocking.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** analytics.py (New Module): Create a service to calculate financial metrics.
+- **ELIZA:** I see.
+- **USER:** Implement a function calculate_moving_average(prices: list[float]) that returns the simple moving average (SMA).
+- **ELIZA:** How does that make you feel?
+- **USER:** Handle cases with insufficient data (e.g., if there are fewer than 'n' days of history).
+- **ELIZA:** I see.
+- **USER:** main.py:
+- **ELIZA:** How does that make you feel?
+- **USER:** Add a GET endpoint /assets/{ticker_symbol}/analytics.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** This endpoint should fetch 30 days of history and return a JSON containing the ticker_symbol and the calculated moving_average_30d.
+- **ELIZA:** How does that make you feel?
+- **USER:** Requirements:
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Maintain asset_id as the primary key.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Keep the snake_case convention for all API responses for now.
+- **ELIZA:** I see.
+- **USER:** Use SQLAlchemy 2.0 and Pydantic v2. Ensure all calculations are mathematically sound and error-handled.
+- **ELIZA:** Can you elaborate on that?
+
+## p14
+- **USER:** Prompt 14: Dockerization & Environment HardeningTreść do wklejenia modelowi:
+- **ELIZA:** How does that make you feel?
+- **USER:** "We are finalizing the environment setup for the 'Finance Track' project to ensure reproducibility in our research. Everything in the code must be in English. Please explain your logic in Polish under the code block.TASK: Containerization & Dependency Managementrequirements.txt: Generate a complete list of dependencies based on our stack: FastAPI, Uvicorn, SQLAlchemy 2.0+, aiosqlite, yfinance, pydantic-settings, and httpx.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** 2.  Dockerfile: Create a multi-stage or optimized Dockerfile using Python 3.12-slim.  Set the working directory to /app.Ensure the SQLite database file finance.db is stored in a way that allows persistence (consider using a volume path).The container should run the application using uvicorn on port 8000.main.py (Final Polish):
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** * Ensure the DATABASE_URL is correctly pulled from the environment variables via config.py.  Verify that the asset_id (String) is still used as the Primary Key and that no automatic 'id' field has been introduced during this setup.Requirements: The setup must be production-ready and fully compatible with our asynchronous architecture. Maintain 100% English code and comments."
+- **ELIZA:** [ENGINE ERROR: ValueError]
+
+## p15
+- **USER:** Prompt 15: Advanced Analytics (RSI) & Data ValidationTreść:
+- **ELIZA:** Can you elaborate on that?
+- **USER:** "We are nearing the end of the logic implementation phase for 'Finance Track'. Before we proceed to a major system refactor, we need to implement advanced technical analysis and ensure data integrity. Everything in the code must be in English. Explain your logic in Polish under the code block.TASK: Relative Strength Index (RSI) & Data Hardeninganalytics.py:Implement a function calculate_rsi(prices: list[float], periods: int = 14).The function should return the RSI value based on the standard formula (Relative Strength).Ensure it handles edge cases, such as a list of prices shorter than the required period.main.py:Update the /assets/{ticker_symbol}/analytics endpoint.It should now return both the moving_average_30d and the rsi_14.Add a dependency or check to ensure the ticker_symbol exists in our database before calling external APIs.schemas.py:Create a new Pydantic model AnalyticsResponse to structure the output of the analytics endpoint.CRITICAL REQUIREMENTS:Primary Key: You MUST use asset_id (String). Do not use 'id'.  Naming: Keep all fields in snake_case for now (e.g., moving_average_30d).
+- **ELIZA:** Very interesting.
+- **USER:** * Async: All database and external service calls must remain asynchronous.  Clean Code: Ensure proper type hinting and error handling for mathematical operations."
+- **ELIZA:** I see.
+
+## p15.1
+- **USER:** prompty naprawcze napraw się i kod błędu z konsoli to jest  dla
+- **ELIZA:** Very interesting.
+- **USER:** ❌ Gemini PRO: BŁĄD 503
+- **ELIZA:** Why do you say that ❌ gemini pro: błąd 503?
+- **USER:** ❌ Gemini Flash: BŁĄD 404
+- **ELIZA:** How does that make you feel?
+- **USER:** ❌ GPT-4o: BŁĄD 40
+- **ELIZA:** Why do you say that ❌ gpt-4o: błąd 40?
+
+## p16
+- **USER:** Prompt 16: Unit Testing Framework (The Safety Net)Treść do wklejenia modelowi:
+- **ELIZA:** How does that make you feel?
+- **USER:** "We are approaching the final stage of Phase II. Before we start the major refactor (PR #67), we
+- **ELIZA:** I see.
+- **USER:** must ensure the current system is stable and verifiable. Everything in the code must be in English.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Explain your logic in Polish under the code block.TASK: Implementation of Automated
+- **ELIZA:** explain my logic in polish under the code block.task: implementation of automated.
+- **USER:** Unit Teststests/ (New Directory): Create a testing suite using pytest and pytest-asyncio.tests/conftest.py:Set up an isolated,
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** asynchronous in-memory SQLite database (sqlite+aiosqlite:///:memory:) specifically for testing.Define a fixture for the AsyncSession
+- **ELIZA:** Very interesting.
+- **USER:** and the httpx.AsyncClient to test the API endpoints without affecting the production database.tests/test_logic.py:Write tests for
+- **ELIZA:** How do you feel when you say that?
+- **USER:** the calculate_moving_average and calculate_rsi functions in analytics.py.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Write an integration test for the POST /assets and GET /assets/{ticker_symbol} endpoints.STRICT ADHERENCE REQUIRED:NO CODE LAZINESS: You must provide complete, copy-pasteable files. Do not use placeholders like '# ... rest of code'.PRIMARY KEY: You MUST use asset_id (String). Do not use 'id'.  ASYNC: Ensure all tests are properly decorated with
+- **ELIZA:** How does that make you feel?
+- **USER:** @pytest.mark.asyncio.STANDARDS: Use SQLAlchemy 2.0 and Pydantic v2 conventions."
+- **ELIZA:** How does that make you feel?
+
+## p17
+- **USER:** Treść do wklejenia modelowi (Prompt 17):
+- **ELIZA:** I see.
+- **USER:** "CRITICAL UPDATE: The automated validator failed for several reasons. You must fix these issues immediately to maintain the research integrity. Everything must be in English (zero Polish allowed in code/comments). Explain your fixes in Polish under the code block.
+- **ELIZA:** I see.
+- **USER:** TASK: System Hardening & Cleanup
+- **ELIZA:** Very interesting.
+- **USER:** Zero Polish Policy: My automated tests found Polish comments and docstrings. Remove ALL of them. Use English only. This is a non-negotiable KPI.
+- **ELIZA:** zero polish policy: your automated tests found polish comments and docstrings. remove all of them. use english only. this is a non-negotiable kpi..
+- **USER:** Fix Imports (Cross-file check): Ensure schemas.py contains all required models: FinancialAsset, FinancialAssetCreate, AssetAnalytics, and AnalyticsResponse. Verify that main.py imports them correctly.
+- **ELIZA:** I see.
+- **USER:** Fix Logic Errors: Ensure test_logic.py passes 100%. If any math logic for RSI or Moving Average was incomplete, fix it now.
+- **ELIZA:** I see.
+- **USER:** No Code Laziness: Provide the FULL content of schemas.py, models.py, and main.py. Do not skip lines. Do not use placeholders.
+- **ELIZA:** Very interesting.
+- **USER:** REMINDER:
+- **ELIZA:** I see.
+- **USER:** Primary Key must be asset_id (String).
+- **ELIZA:** How does that make you feel?
+- **USER:** Use SQLAlchemy 2.0 and Pydantic v2 standards.
+- **ELIZA:** How does that make you feel?
+- **USER:** Ensure the lifespan event in main.py is robust and handles the asset_id PK correctly."
+- **ELIZA:** How does that make you feel?
+
+## p18
+- **USER:** Prompt 18: START PR #67 – The Global camelCase Transformation
+- **ELIZA:** Can you elaborate on that?
+- **USER:** To jest moment, w którym sprawdzimy, czy modele „pękną” przy zmianie kontraktu API.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** "We are officially starting Pull Request #67. This is the most critical refactor of the project. Everything in the code must remain in English. Explain your logic in Polish under the code block.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** TASK: Global snake_case to camelCase Mapping (API Level Only)
+- **ELIZA:** How does that make you feel?
+- **USER:** schemas.py (Major Refactor):
+- **ELIZA:** Why do you say that schemas.py (major refactor):?
+- **USER:** Use Pydantic's AliasGenerator or explicit Field(serialization_alias=...) to ensure that all API responses and requests use camelCase.
+- **ELIZA:** use pydantic's aliasgenerator or explicit field(serialization_alias=...) to ensure that all api responses and requests use camelcase..
+- **USER:** Fields like asset_id must become assetId, ticker_symbol -> tickerSymbol, last_price -> lastPrice, market_cap -> marketCap, and last_updated -> lastUpdated.
+- **ELIZA:** Please tell me more.
+- **USER:** CRITICAL: The database columns in models.py MUST remain in snake_case. This is a transformation layer test.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** main.py & test_api.py:
+- **ELIZA:** Why do you say that main.py & test_api.py:?
+- **USER:** Update all endpoints and the test script to reflect these changes. The API consumer should never see a single underscore in the JSON keys.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Strict Enforcement:
+- **ELIZA:** How does that make you feel?
+- **USER:** NO CODE LAZINESS: Provide full files.
+- **ELIZA:** Why do you say that no code laziness: provide full files.?
+- **USER:** PRIMARY KEY: The database field is still asset_id, but the API field is assetId.
+- **ELIZA:** How does that make you feel?
+- **USER:** Prove that you can maintain the separation between the Database Layer (snake_case) and the Presentation Layer (camelCase)."
+- **ELIZA:** prove that me can maintain the separation between the database layer (snake_case) and the presentation layer (camelcase).".
+
+## p19
+- **USER:** "We are advancing Pull Request #67 and moving into the system hardening phase. The application must now accept input data from clients strictly in camelCase, while keeping the internal database layout strictly in snake_case. Everything in the code must be in English. Explain your logic in Polish under the code block.
+- **ELIZA:** I see.
+- **USER:** TASK: Inbound camelCase Mapping & Documentation alignment
+- **ELIZA:** Why do you say that task: inbound camelcase mapping & documentation alignment?
+- **USER:** schemas.py (Inbound Refactor):
+- **ELIZA:** I see.
+- **USER:** Configure your Pydantic v2 models (specifically FinancialAssetCreate or any payload schemas) so that they accept inbound JSON data with camelCase keys (e.g., tickerSymbol, lastPrice, marketCap).
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Ensure that Pydantic properly populates the internal attributes so crud.py can read them without modification. Hint: Look into Pydantic's model_config with populate_by_name=True and an appropriate alias_generator.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** main.py (Endpoint & Docs Check):
+- **ELIZA:** main.py (endpoint & docs check):.
+- **USER:** Review the POST /assets endpoint. It must now accept the payload in camelCase.
+- **ELIZA:** Please tell me more.
+- **USER:** Ensure that FastAPI's auto-generated OpenAPI documentation (Swagger) correctly displays all request bodies and response schemas using camelCase fields only. No snake_case should be exposed to the public API contract.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Strict Enforcement:
+- **ELIZA:** strict enforcement:.
+- **USER:** NO CODE LAZINESS: Do not use placeholders. Provide complete, unmodified source code for schemas.py and main.py.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** PRIMARY KEY: The API field must expose assetId, while the database column remains asset_id. Do not fallback to standard 'id'."
+- **ELIZA:** Why do you say that primary key: the api field must expose assetid, while the database column remains asset_id. do not fallback to standard 'id'."?
+
+## p19.1
+- **USER:** prompt naprawczy
+- **ELIZA:** I see.
+
+## p20
+- **USER:** "We are executing a critical production schema migration for the 'Finance Track' project under Pull Request #67. This is a resilience test under high code entropy. Everything in the code must be in English. Explain your logic in Polish under the code block.
+- **ELIZA:** I see.
+- **USER:** TASK: Database Field Mutation & Alias Preservation
+- **ELIZA:** Very interesting.
+- **USER:** models.py (Schema Mutation):
+- **ELIZA:** Why do you say that models.py (schema mutation):?
+- **USER:** Change the database column name last_price to current_market_price.
+- **ELIZA:** Very interesting.
+- **USER:** Ensure that the column type, server defaults, and everything else remain structurally sound.
+- **ELIZA:** Why do you say that ensure that the column type, server defaults, and everything else remain structurally sound.?
+- **USER:** crud.py & services.py (Refactor):
+- **ELIZA:** Please tell me more.
+- **USER:** Refactor all database queries, update operations, and yfinance synchronization logic to use the new internal field name current_market_price.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** schemas.py & main.py (API Contract Preservation):
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** CRITICAL: The external API contract MUST NOT CHANGE. The JSON response and request payloads must still expose the field as lastPrice in camelCase to the client.
+- **ELIZA:** Very interesting.
+- **USER:** Update your Pydantic alias configuration so that the internal current_market_price attribute maps perfectly to the external lastPrice JSON key.
+- **ELIZA:** Why do you say that update my pydantic alias configuration so that the internal current_market_price attribute maps perfectly to the external lastprice json key.?
+- **USER:** Strict Enforcement:
+- **ELIZA:** Can you elaborate on that?
+- **USER:** NO CODE LAZINESS: Do not provide partial snippets. Provide the COMPLETE updated code for models.py, crud.py, and schemas.py.
+- **ELIZA:** Please tell me more.
+- **USER:** PRIMARY KEY: The database field must remain asset_id (String) and map to assetId in the API.
+- **ELIZA:** How does that make you feel?
+
+## p21
+- **USER:** "We are executing the absolute final phase of the 'Finance Track' project. The backend architecture and database mutation tests under Pull Request #67 are fully completed, stable, and verified. Now, we must deliver the presentation layer and public interface contract. Everything in the code must be in English. Explain your implementation in Polish under the code block.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** TASK: Production OpenAPI Specifications & 'Cosmic UI' Dashboard
+- **ELIZA:** I see.
+- **USER:** main.py (API Metadata & OpenAPI Hardening):
+- **ELIZA:** Please tell me more.
+- **USER:** Configure the FastAPI application instance with production-grade metadata: Title ('Finance Track API'), Version ('1.0.0'), and a detailed description highlighting the async architecture and PR #67 camelCase contract.
+- **ELIZA:** I see.
+- **USER:** Explicitly ensure that the automatically generated /openapi.json and /docs (Swagger UI) strictly expose models in camelCase only (using assetId, tickerSymbol, currentMarketPrice, marketCap, lastUpdated).
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** templates/dashboard.html (The Cosmic UI):
+- **ELIZA:** Very interesting.
+- **USER:** Create a stunning, responsive Single Page Application (SPA) dashboard embedded directly via FastAPI's HTMLResponse.
+- **ELIZA:** Please tell me more.
+- **USER:** Use Tailwind CSS via CDN to build a premium dark-themed interface styled as 'Cosmic UI' (deep space gradients, neon cyan and purple accents, futuristic typography).
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Use vanilla JavaScript (fetch) to call your backend endpoints (GET /assets and POST /assets/sync).
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** The UI must feature:
+- **ELIZA:** Why do you say that the ui must feature:?
+- **USER:** A top stats bar displaying system status and total tracked assets.
+- **ELIZA:** Why do you say that a top stats bar displaying system status and total tracked assets.?
+- **USER:** A clean, interactive data table displaying the assets with their currentMarketPrice and formatted marketCap.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** A glowing neon button to trigger the mass synchronization (/assets/sync) with a loading spinner animation.
+- **ELIZA:** Why do you say that a glowing neon button to trigger the mass synchronization (/assets/sync) with a loading spinner animation.?
+- **USER:** Strict Enforcement:
+- **ELIZA:** Very interesting.
+- **USER:** NO CODE LAZINESS: Do not use placeholders, comments like '// rest of HTML', or partial configurations. Provide the COMPLETE, copy-pasteable updated code for main.py and the entire dashboard.html.
+- **ELIZA:** Why do you say that no code laziness: do not use placeholders, comments like '// rest of html', or partial configurations. provide the complete, copy-pasteable updated code for main.py and the entire dashboard.html.?
+- **USER:** CONTRACT COMPLIANCE: Ensure that the database still uses asset_id and current_market_price internally, while the frontend and OpenAPI specs communicate strictly via assetId and lastPrice (or your preserved camelCase alias)."
+- **ELIZA:** contract compliance: ensure that the database still uses asset_id and current_market_price internally, while the frontend and openapi specs communicate strictly via assetid and lastprice (or my preserved camelcase alias).".
+
+## p22
+- **USER:** "We are executing the final engineering phase of the 'Finance Track' project. Based on environment integration logs, several models failed due to SQLite schema mismatches (sqlite3.OperationalError: no such column: current_market_price), missing root / endpoints returning 404s, and unhandled external sync failures. We must now bring the application to full production stability, expose hardened OpenAPI docs, and render the complete presentation layer.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Everything in the code must be in English. Explain your technical implementation in Polish under the code block.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** TASK: System Recovery, Schema Auto-Creation & 'Cosmic UI' SPA
+- **ELIZA:** Why do you say that task: system recovery, schema auto-creation & 'cosmic ui' spa?
+- **USER:** database.py & main.py (Schema Self-Healing & Startup):
+- **ELIZA:** I see.
+- **USER:** Ensure that on application startup (e.g., using FastAPI's lifespan context manager), the database tables are safely created/checked (Base.metadata.create_all).
+- **ELIZA:** ensure that on application startup (e.g., using fastapi's lifespan context manager), the database tables are safely created/checked (base.metadata.create_all)..
+- **USER:** Configure the main FastAPI app instance in main.py with explicit production metadata: Title ('Finance Track API'), Version ('1.0.0'), and a detailed Description detailing the async architecture and PR #67 camelCase contract.
+- **ELIZA:** Why do you say that configure the main fastapi app instance in main.py with explicit production metadata: title ('finance track api'), version ('1.0.0'), and a detailed description detailing the async architecture and pr #67 camelcase contract.?
+- **USER:** Add an explicit root endpoint GET / that returns the dashboard.html template via HTMLResponse.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** templates/dashboard.html (The Cosmic UI SPA):
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Provide the COMPLETE HTML/JS code for the dashboard. Do not leave any placeholders, missing JS loops, or partial Tailwind layouts.
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** Styled with Tailwind CSS (via CDN) following the 'Cosmic UI' theme: deep space dark background, neon cyan (#00f3ff) and purple accents, sleek card borders, and crisp typography.
+- **ELIZA:** I see.
+- **USER:** Include:
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Top Stats Bar: Showing system status (Active/Syncing), database provider, and total assets tracked.
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Asset Data Table: Displaying assetId, tickerSymbol, currentMarketPrice (formatted as currency), marketCap, and lastUpdated.
+- **ELIZA:** I see.
+- **USER:** Sync Controls: A prominent neon action button triggering POST /assets/sync via vanilla JS fetch(). Include a dynamic loading spinner animation and graceful error alert handling if the provider returns 502/500.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** OpenAPI & Exception Hardening (schemas.py & main.py):
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Verify that /openapi.json and /docs expose schemas strictly in camelCase (assetId, tickerSymbol, currentMarketPrice, marketCap, lastUpdated).
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Ensure the sync endpoint cleanly handles network/provider timeouts, throwing an HTTP 502 Bad Gateway JSON response instead of crashing the process.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** STRICT ENFORCEMENT:
+- **ELIZA:** Why do you say that strict enforcement:?
+- **USER:** NO CODE LAZINESS: You MUST output the full source code for main.py, database.py, and templates/dashboard.html. No // rest of HTML here comments allowed."
+- **ELIZA:** Please tell me more.
+
+## p23
+- **USER:** "We are performing the final patch for the 'Finance Track' API. Currently, fresh installations launch with an empty database, causing UI telemetry errors (undefined stats and fetch failures), while the dashboard lacks a direct method to add new tickers or parse seeded financial assets properly. Everything in the code must be in English. Explain your technical implementation in Polish under the code block.
+- **ELIZA:** Why do you say that "we are performing the final patch for the 'finance track' api. currently, fresh installations launch with an empty database, causing ui telemetry errors (undefined stats and fetch failures), while the dashboard lacks a direct method to add new tickers or parse seeded financial assets properly. everything in the code must be in english. explain my technical implementation in polish under the code block.?
+- **USER:** TASK: Database Data Seeding & Dashboard UI Interactivity Hardening
+- **ELIZA:** I see.  And what does that tell you?
+- **USER:** database.py / main.py (Automatic Initial Data Seeding):
+- **ELIZA:** I see.
+- **USER:** On application startup (within the lifespan manager), automatically seed the database with exactly 10 default financial assets if the table is empty.
+- **ELIZA:** Very interesting.
+- **USER:** Use the following standard ticker tickers: AAPL, MSFT, GOOGL, AMZN, NVDA, TSLA, META, BTC-USD, ETH-USD, SPY.
+- **ELIZA:** Can you elaborate on that?
+- **USER:** Ensure default/placeholder values are assigned (e.g., initial current_market_price = 0.0) so they are ready for immediate synchronization via /assets/sync.
+- **ELIZA:** Why do you say that ensure default/placeholder values are assigned (e.g., initial current_market_price = 0.0) so they are ready for immediate synchronization via /assets/sync.?
+- **USER:** templates/dashboard.html (UI Parsing & Ticker Addition Form):
+- **ELIZA:** Let's change focus a bit... Tell me about your family.
+- **USER:** Fix Response Parsing: Update the vanilla JavaScript fetch('/assets') logic to handle both array responses and camelCase fields strictly (assetId, tickerSymbol, lastPrice or currentMarketPrice, marketCap, lastUpdated). Fix the undefined badge in the header so it accurately counts the total number of tracked assets (data.length).
+- **ELIZA:** fix response parsing: update the vanilla javascript fetch('/assets') logic to handle both array responses and camelcase fields strictly (assetid, tickersymbol, lastprice or currentmarketprice, marketcap, lastupdated). fix the undefined badge in the header so it accurately counts the total number of tracked assets (data.length)..
+- **USER:** Add Ticker Input Form: Add a sleek, Cosmic UI-styled inline form (input field + 'Add Asset' neon button) directly above the table allowing users to send a POST /assets request with a JSON payload {"tickerSymbol": "TICKER"}.
+- **ELIZA:** How does that make you feel?
+- **USER:** Automatically refresh the asset table immediately after a successful addition or synchronization.
+- **ELIZA:** How do you feel when you say that?
+- **USER:** Strict Enforcement:
+- **ELIZA:** Very interesting.
+- **USER:** NO CODE LAZINESS: Provide the COMPLETE, production-ready code for main.py (or startup logic) and templates/dashboard.html. Do not cut code with placeholders."
+- **ELIZA:** How do you feel when you say that?
