@@ -221,3 +221,5 @@ FROM financial_assets
 2026-08-01 16:51:31,891 - INFO - FastInfo failed for SPY, trying history fallback.
 2026-08-01 16:51:32,065 - INFO - Price updates committed successfully. Updated lines: 10
 2026-08-01 16:56:46,284 - INFO - Starting Finance Track API - Verifying Schema & Seed Registry.
+2026-08-01 17:01:06,296 - INFO - Starting Finance Track API - Verifying Schema & Seed Registry.
+2026-08-02 21:17:40,853 - INFO - Starting Finance Track API - Verifying Schema & Seed Registry.
